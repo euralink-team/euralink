@@ -1,0 +1,39 @@
+{
+  "name": "euralink",
+  "description": "A modern, fast, and feature-rich Lavalink client for Node.js.",
+  "main": "build/index.js",
+  "types": "build/index.d.ts",
+  "files": [
+    "build"
+  ],
+  "author": "Ryuzii",
+  "license": "MIT",
+  "keywords": [
+    "lavalink",
+    "music",
+    "discord",
+    "discordjs",
+    "discord.js",
+    "discordjs-lavalink",
+    "audio",
+    "euralink"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/euralink-team/euralink.git"
+  },
+  "bugs": {
+    "url": "https://github.com/euralink-team/euralink/issues"
+  },
+  "homepage": "https://euralink.js.org/",
+  "devDependencies": {
+    "@types/jsdom": "^21.1.7",
+    "@types/node": "^22.15.29"
+  },
+  "dependencies": {
+    "discord.js": "^14.19.3",
+    "jsdom": "^26.1.0",
+    "undici": "^7.10.0",
+    "ws": "^8.18.2"
+  }
+}
