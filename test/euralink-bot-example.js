@@ -2,7 +2,7 @@
 const { Client, GatewayIntentBits, Partials, Events } = require('discord.js');
 const { Euralink } = require('../build');
 
-const TOKEN = 'MTMyMzE4NjE5NjI4OTE2MzI4NA.GR8SIQ.X9hYQ9feaUEzjrYvBbVJ_scqpPQIQFjm4ZYZw8'; // Replace with your bot token
+const TOKEN = 'YOUR_BOT_TOKEN'; // Replace with your bot token
 
 const client = new Client({
   intents: [
