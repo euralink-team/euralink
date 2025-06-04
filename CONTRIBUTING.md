@@ -38,10 +38,12 @@ By contributing, you agree to follow our [Code of Conduct](./CODE_OF_CONDUCT.md)
 - Performance optimizations
 - Code refactors
 - Documentation enhancements
+  
 **📦 Features**
 - Support for new Lavalink features
 - Quality-of-life tools or extensions
 - Useful integrations or plugins
+  
 **🧪 Tests**
 - Add unit or integration tests
 - Improve test coverage
