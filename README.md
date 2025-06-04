@@ -11,6 +11,7 @@ A modern, fast, and feature-rich Lavalink client for Node.js and Discord bots.
 ## Features
 
 - **Blazing fast** REST and WebSocket communication
+- **Supports** v3 and v4 versions
 - **Easy-to-use** and modern API
 - **Advanced player controls** (queue, filters, autoplay, etc.)
 - **Multi-node support** with smart load balancing
