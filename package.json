@@ -20,20 +20,20 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/euralink-team/euralink.git"
+    "url": "git+https://github.com/euralink-team/euralink.git"
   },
   "bugs": {
     "url": "https://github.com/euralink-team/euralink/issues"
   },
-  "homepage": "https://euralink.js.org/",
+  "homepage": "https://euralink-website.vercel.app/",
   "devDependencies": {
     "@types/jsdom": "^21.1.7",
     "@types/node": "^22.15.29"
   },
   "dependencies": {
-    "discord.js": "^14.19.3",
     "jsdom": "^26.1.0",
     "undici": "^7.10.0",
     "ws": "^8.18.2"
-  }
+  },
+  "version": "0.1.2"
 }

@@ -251,11 +251,26 @@ class Node {
     }
 
     close(event, reason) {
-        this.eura.emit("nodeDisconnect", this, { event, reason });
-        this.eura.emit("debug", `Connection with Lavalink closed with Error code : ${event || "Unknown code"}, reason: ${reason || "Unknown reason"}`);
-
         this.connected = false;
-        this.reconnect();
+        this.eura.emit('nodeDisconnect', this, event, reason);
+        // Migrate players to another node if available
+        const healthyNode = this.eura.leastUsedNodes.find(n => n !== this && n.connected);
+        if (healthyNode) {
+            for (const player of this.eura.players.values()) {
+                if (player.node === this) {
+                    player.node = healthyNode;
+                    player.connect({
+                        guildId: player.guildId,
+                        voiceChannel: player.voiceChannel,
+                        textChannel: player.textChannel,
+                        deaf: player.deaf,
+                        mute: player.mute
+                    });
+                    player.restart && player.restart();
+                    this.eura.emit('playerMigrated', player, this, healthyNode);
+                }
+            }
+        }
     }
 
     reconnect() {

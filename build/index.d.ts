@@ -61,13 +61,32 @@ export declare class Rest extends EventEmitter {
     public parseResponse(req: any): Promise<RestResponse | null>;
 }
 
-export declare class Queue extends Array<Track> {
-    get size(): number;
-    get first(): Track | null;
-    add(track: Track): this;
-    remove(index: number): Track;
-    clear(): void;
-    shuffle(): void;
+export interface Player {
+    toJSON(): any;
+    restart(): Promise<void>;
+    shuffleQueue(): this;
+    moveQueueItem(from: number, to: number): this;
+    removeQueueItem(index: number): any;
+}
+
+export interface Euralink {
+    saveAllPlayers(filePath?: string): Promise<void>;
+    restoreAllPlayers(filePath?: string): Promise<void>;
+}
+
+export interface Queue<T = any> extends Array<T> {
+    shuffle(): this;
+    move(from: number, to: number): this;
+    remove(index: number): T | null;
+    toArray(): T[];
+}
+
+export interface EuralinkEvents {
+    queueShuffle: (player: Player) => void;
+    queueMove: (player: Player, from: number, to: number) => void;
+    queueRemove: (player: Player, index: number, removed: any) => void;
+    playerMigrated: (player: Player, fromNode: Node, toNode: Node) => void;
+    playerError: (player: Player, error: Error) => void;
 }
 
 export declare class Plugin {

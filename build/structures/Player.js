@@ -67,30 +67,66 @@ class Player extends EventEmitter {
     }
 
     async play() {
-        if (!this.connected) throw new Error("Player connection is not initiated. Kindly use Euralink.createConnection() and establish a connection, TIP: Check if Guild Voice States intent is set/provided & 'updateVoiceState' is used in the raw(Gateway Raw) event");
-        if (!this.queue.length) return;
+        try {
+            if (!this.connected) throw new Error("Player connection is not initiated. Kindly use Euralink.createConnection() and establish a connection, TIP: Check if Guild Voice States intent is set/provided & 'updateVoiceState' is used in the raw(Gateway Raw) event");
+            if (!this.queue.length) return;
 
-        this.current = this.queue.shift();
+            this.current = this.queue.shift();
 
-        if (!this.current.track) {
-            this.current = await this.current.resolve(this.eura);
-        }
+            if (!this.current.track) {
+                this.current = await this.current.resolve(this.eura);
+            }
 
-        this.playing = true;
-        this.position = 0;
+            this.playing = true;
+            this.position = 0;
 
-        const { track } = this.current;
+            const { track } = this.current;
 
-        this.node.rest.updatePlayer({
-            guildId: this.guildId,
-            data: {
-                track: {
-                    encoded: track,
+            this.node.rest.updatePlayer({
+                guildId: this.guildId,
+                data: {
+                    track: {
+                        encoded: track,
+                    },
                 },
-            },
-        });
+            });
 
-        return this;
+            return this;
+        } catch (err) {
+            this.eura.emit('playerError', this, err);
+            throw err;
+        }
+    }
+
+    /**
+     * Restores playback after a node reconnect (autoResume).
+     * Re-sends the current track, position, paused state, volume, and filters.
+     */
+    async restart() {
+        try {
+            if (!this.current || !this.connected) return;
+            const data = {
+                track: { encoded: this.current.track },
+                position: this.position,
+                paused: this.paused,
+                volume: this.volume,
+            };
+            if (this.filters && typeof this.filters.getPayload === "function") {
+                const filterPayload = this.filters.getPayload();
+                if (filterPayload && Object.keys(filterPayload).length > 0) {
+                    data.filters = filterPayload;
+                }
+            }
+            await this.node.rest.updatePlayer({
+                guildId: this.guildId,
+                data,
+            });
+            this.playing = !this.paused;
+            this.eura.emit("debug", this.guildId, "Player state restored after node reconnect (autoResume)");
+        } catch (err) {
+            this.eura.emit('playerError', this, err);
+            throw err;
+        }
     }
 
     /**
@@ -444,6 +480,72 @@ class Player extends EventEmitter {
         }
       }
       return this;
+    }
+
+    /**
+     * Serializes the player state for persistence.
+     */
+    toJSON() {
+        return {
+            guildId: this.guildId,
+            textChannel: this.textChannel,
+            voiceChannel: this.voiceChannel,
+            volume: this.volume,
+            loop: this.loop,
+            position: this.position,
+            current: this.current,
+            queue: this.queue.toArray ? this.queue.toArray() : Array.from(this.queue),
+            previousTracks: this.previousTracks,
+            playing: this.playing,
+            paused: this.paused,
+            filters: this.filters && typeof this.filters.getPayload === 'function' ? this.filters.getPayload() : {},
+            isAutoplay: this.isAutoplay
+        };
+    }
+
+    /**
+     * Recreates a player from saved state.
+     * @param {Euralink} eura
+     * @param {Node} node
+     * @param {Object} data
+     */
+    static fromJSON(eura, node, data) {
+        const player = new Player(eura, node, {
+            guildId: data.guildId,
+            textChannel: data.textChannel,
+            voiceChannel: data.voiceChannel,
+            defaultVolume: data.volume,
+            loop: data.loop
+        });
+        player.position = data.position;
+        player.current = data.current;
+        if (Array.isArray(data.queue)) player.queue.add(...data.queue);
+        player.previousTracks = data.previousTracks || [];
+        player.playing = data.playing;
+        player.paused = data.paused;
+        if (data.filters && player.filters && typeof player.filters.setPayload === 'function') {
+            player.filters.setPayload(data.filters);
+        }
+        player.isAutoplay = data.isAutoplay;
+        return player;
+    }
+
+    shuffleQueue() {
+        this.queue.shuffle();
+        this.eura.emit('queueShuffle', this);
+        return this;
+    }
+
+    moveQueueItem(from, to) {
+        this.queue.move(from, to);
+        this.eura.emit('queueMove', this, from, to);
+        return this;
+    }
+
+    removeQueueItem(index) {
+        const removed = this.queue.remove(index);
+        this.eura.emit('queueRemove', this, index, removed);
+        return removed;
     }
 }
 

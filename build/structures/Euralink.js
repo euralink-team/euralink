@@ -3,6 +3,7 @@ const { Node } = require("./Node");
 const { Player } = require("./Player");
 const { Track } = require("./Track");
 const { version: pkgVersion } = require("../../package.json")
+const fs = require('fs/promises');
 
 const versions = ["v3", "v4"];
 
@@ -247,6 +248,49 @@ class Euralink extends EventEmitter {
     const player = this.players.get(guildId);
     if (!player) throw new Error(`Player not found for ${guildId} guildId`);
     return player;
+  }
+
+  /**
+   * Saves all player states to a file.
+   * @param {string} filePath
+   */
+  async saveAllPlayers(filePath = './players.json') {
+    const data = Array.from(this.players.values()).map(player => player.toJSON());
+    await fs.writeFile(filePath, JSON.stringify(data, null, 2));
+    this.emit('debug', `Saved all player states to ${filePath}`);
+  }
+
+  /**
+   * Restores all player states from a file.
+   * @param {string} filePath
+   */
+  async restoreAllPlayers(filePath = './players.json') {
+    try {
+      const raw = await fs.readFile(filePath, 'utf8');
+      const data = JSON.parse(raw);
+      for (const playerData of data) {
+        // Find the best node for this player
+        const node = this.leastUsedNodes[0];
+        if (!node) continue;
+        const player = this.players.get(playerData.guildId) || this.createPlayer(node, playerData);
+        // Restore state
+        player.position = playerData.position;
+        player.current = playerData.current;
+        if (Array.isArray(playerData.queue)) player.queue.add(...playerData.queue);
+        player.previousTracks = playerData.previousTracks || [];
+        player.playing = playerData.playing;
+        player.paused = playerData.paused;
+        if (playerData.filters && player.filters && typeof player.filters.setPayload === 'function') {
+          player.filters.setPayload(playerData.filters);
+        }
+        player.isAutoplay = playerData.isAutoplay;
+        // Optionally, call restart to resume playback
+        if (player.current && player.playing) player.restart();
+      }
+      this.emit('debug', `Restored all player states from ${filePath}`);
+    } catch (e) {
+      this.emit('debug', `No player state file found or failed to restore: ${e.message}`);
+    }
   }
 }
 

@@ -13,11 +13,8 @@ class Queue extends Array {
     }
 
     remove(index) {
-        if (index >= 0 && index < this.length) {
-            return this.splice(index, 1)[0];
-        } else {
-            throw new Error("Index out of range");
-        }
+        if (index < 0 || index >= this.length) return null;
+        return this.splice(index, 1)[0];
     }
 
     clear() {
@@ -29,6 +26,18 @@ class Queue extends Array {
             const j = Math.floor(Math.random() * (i + 1));
             [this[i], this[j]] = [this[j], this[i]];
         }
+        return this;
+    }
+
+    move(from, to) {
+        if (from < 0 || from >= this.length || to < 0 || to >= this.length) return this;
+        const item = this.splice(from, 1)[0];
+        this.splice(to, 0, item);
+        return this;
+    }
+
+    toArray() {
+        return Array.from(this);
     }
 }
 

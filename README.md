@@ -11,8 +11,8 @@ A modern, fast, and feature-rich Lavalink client for Node.js and Discord bots.
 ## Features
 
 - **Blazing fast** REST and WebSocket communication
-- **Supports** v3 and v4 of lavalink protocols
 - **Easy-to-use** and modern API
+- **Supports** v3 and v4 lavalink protocols
 - **Advanced player controls** (queue, filters, autoplay, etc.)
 - **Multi-node support** with smart load balancing
 - **Rich audio filters** (nightcore, vaporwave, 8D, bassboost, and more)
@@ -20,6 +20,9 @@ A modern, fast, and feature-rich Lavalink client for Node.js and Discord bots.
 - **Plugin system** for easy extensibility
 - **Robust error handling** and event system
 - **Ready for Discord.js v14+ and modern Discord bots**
+- **True auto-resume** after bot or node restarts (with state persistence)
+- **Automatic player migration** on node failure (failover)
+- **Granular queue controls** (shuffle, move, remove, view)
 
 ---
 
@@ -90,10 +93,16 @@ const eura = new Euralink(client, nodes, {
     plugins: [] // Optional
 });
 
-client.on('ready', () => {
+client.on('ready', async () => {
     console.log(`[Discord] Logged in as ${client.user.tag}`);
     eura.init(client.user.id);
+    await eura.restoreAllPlayers('./players.json'); // For true resume, the bo will reconnect the VC and play the same song
 })
+
+process.on('SIGINT', async () => {
+  await eura.saveAllPlayers('./players.json');
+  process.exit(0);
+}); // For true resume, the bo will reconnect the VC and play the same song
 
 client.on('messageCreate', async (message) => {
     if (message.author.bot || !message.guild) return;
@@ -154,7 +163,12 @@ client.on('messageCreate', async (message) => {
 eura.on('nodeConnect', (node) => {
     console.log(`[Euralink] Connected to node: ${node.name}`)
 });
-eura.on('nodeConnect', (node, error) => {
+
+eura.on('nodeReconnect', (node) => {
+    console.log(`[Euralink] Node reconnecting: ${node.name}`)
+})
+
+eura.on('nodeError', (node, error) => {
     console.log(`Node "${node.name}" encountered an error: ${error.message}.`);
 });
 
@@ -193,9 +207,14 @@ module.exports = {
 
 ---
 
-- Replace `YOUR_BOT_TOKEN_HERE` in your `config.js` with your bot's token.
+- Replace `YOUR_BOT_TOKEN_HERE` with your bot's token.
 - Make sure your Lavalink server is running and the credentials match.
 - Join a voice channel and type `!play Never Gonna Give You Up` in chat!
+
+---
+
+## Example Bot with Other Commands
+Go here [Example Bot](https://github.com/euralink-team/euralink/blob/main/test/euralink-bot.js)
 
 ---
 
@@ -211,7 +230,7 @@ module.exports = {
 - **Rest**: REST API wrapper
 - **Plugin**: Extend Euralink with custom plugins
 
-See [TypeDocs](https://euralink.js.org/) or [index.d.ts](./build/index.d.ts) for full typings and API docs.
+See [TypeDocs](https://euralink-website.vercel.app/) or [index.d.ts](./build/index.d.ts) for full typings and API docs.
 
 ---
 
@@ -222,6 +241,28 @@ Euralink ships with full TypeScript types. Just import as usual:
 ```ts
 import { Euralink, Player, Node, Track } from 'euralink';
 ```
+
+---
+
+## 🌟 Official Bot
+
+<table>
+  <tr>
+    <td align="center" width="200">
+      <img src="https://media.discordapp.net/attachments/1379961285822644228/1380143372223909888/ChatGPT_Image_Jun_4_2025_08_36_33_PM_optimized_1000.png?ex=6842ce2d&is=68417cad&hm=5ce85d095418f15344303425747168d0ee57629609cd903ca16d203bf318a72c&=&format=webp&quality=lossless&width=971&height=971" width="96" height="96" alt="Euralink Bot"/><br>
+      <b>Euralink Official Bot</b><br>
+      <a href="https://discord.com/oauth2/authorize?client_id=YOUR_BOT_CLIENT_ID&scope=bot+applications.commands&permissions=3147776">
+        <img src="https://img.shields.io/badge/Add%20to%20Discord-5865F2?logo=discord&logoColor=white&style=for-the-badge" alt="Add to Discord"/>
+      </a><br>
+      <a href="https://github.com/euralink-team/euralink">
+        <img src="https://img.shields.io/badge/GitHub-Source%20Code-black?logo=github&style=for-the-badge" alt="GitHub Source"/>
+      </a><br>
+      <a href="https://discord.gg/4Dmfd6yE7F">
+        <img src="https://img.shields.io/badge/Join%20Support%20Server-5865F2?logo=discord&logoColor=white&style=for-the-badge" alt="Discord Server"/>
+      </a>
+    </td>
+  </tr>
+</table>
 
 ---
 
@@ -244,4 +285,55 @@ MIT © Ryuzii & Euralink contributors
 
 - [Documentation](https://euralink.js.org/)
 - [GitHub](https://github.com/euralink-team/euralink)
-- [NPM](https://www.npmjs.com/package/euralink) 
+- [NPM](https://www.npmjs.com/package/euralink)
+
+---
+
+## Plugin System
+
+Euralink supports a simple plugin system. Plugins can hook into Euralink events and extend functionality.
+
+**Example:**
+
+```js
+const ExamplePlugin = require('./plugins/examplePlugin');
+
+const eura = new Euralink(client, [/* nodes */], {
+  send: (data) => { /* ... */ },
+  plugins: [new ExamplePlugin()]
+});
+```
+
+See `plugins/examplePlugin.js` for a sample plugin.
+
+---
+
+## Advanced Queue Controls
+
+Euralink's `Queue` class supports advanced features:
+
+- `shuffle()` — Shuffle the queue
+- `move(from, to)` — Move a track from one position to another
+- `remove(index)` — Remove a track by index
+
+You can also use these via the player:
+
+```js
+player.shuffleQueue();
+player.moveQueueItem(0, 2);
+player.removeQueueItem(1);
+```
+
+---
+
+## Player State Persistence
+
+You can save and restore all player states for true auto-resume after bot restarts:
+
+```js
+// Save all players
+await eura.saveAllPlayers('./players.json');
+
+// Restore all players
+await eura.restoreAllPlayers('./players.json');
+``` 
