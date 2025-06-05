@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.1.1-beta]
+## [0.1.2]
 
 ### Added
 - Player state persistence: `Player.toJSON()`, `Player.fromJSON()`, `Euralink.saveAllPlayers()`, `Euralink.restoreAllPlayers()`
