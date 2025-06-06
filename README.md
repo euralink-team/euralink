@@ -269,8 +269,6 @@ import { Euralink, Player, Node, Track } from 'euralink';
 
 ---
 
----
-
 ## Honorable Mention
 
 <div style="text-align: center;">
