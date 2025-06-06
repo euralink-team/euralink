@@ -41,6 +41,8 @@ const eura = new Euralink(client, nodes, {
     },
     defaultSearchPlatform: 'spsearch',
     restVersion: 'v4',
+    euraSync: true,
+    setActivityStatus: true,
     plugins: [] // Optional
 });
 
@@ -145,6 +147,14 @@ eura.on('nodeConnect', (node) => {
 eura.on('nodeError', (node, error) => {
     console.log(`Node "${node.name}" encountered an error: ${error.message}.`);
 });
+
+/*
+*
+* IF YOU USE euraSync and setActivityStatus REMOVE THIS EVENT
+*
+* trackStart and queueEnd
+*
+*/
 
 eura.on('trackStart', (player, track) => {
     const channel = client.channels.cache.get(player.textChannel);
