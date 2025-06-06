@@ -110,6 +110,14 @@ eura.on('nodeConnect', (node, error) => {
     console.log(`Node "${node.name}" encountered an error: ${error.message}.`);
 });
 
+/*
+*
+* IF YOU USE euraSync and setActivityStatus REMOVE THIS EVENT
+*
+* trackStart and queueEnd
+*
+*/
+
 eura.on('trackStart', (player, track) => {
     const channel = client.channels.cache.get(player.textChannel);
     if (channel) channel.send(`🎶 Now playing: **${track.info.title}**`);
