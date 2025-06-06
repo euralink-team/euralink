@@ -37,9 +37,9 @@ class Track {
         };
     }
 
-    async resolve(riffy) {
+    async resolve(eura) {
         const query = [this.info.author, this.info.title].filter((x) => !!x).join(" - ");
-        const result = await riffy.resolve({ query, source: riffy.options.defaultSearchPlatform, requester: this.info.requester });
+        const result = await eura.resolve({ query, source: eura.options.defaultSearchPlatform, requester: this.info.requester });
 
         if (!result || !result.tracks.length) {
             return;
