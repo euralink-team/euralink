@@ -5,6 +5,7 @@ A modern, fast, and feature-rich Lavalink client for Node.js and Discord bots.
 [![npm version](https://img.shields.io/npm/v/euralink.svg)](https://www.npmjs.com/package/euralink)
 [![GitHub stars](https://img.shields.io/github/stars/euralink-team/euralink.svg?style=social)](https://github.com/euralink-team/euralink)
 [![MIT License](https://img.shields.io/github/license/euralink-team/euralink)](LICENSE)
+[![Changelog](https://img.shields.io/badge/changelog-view-brightgreen)](https://github.com/euralink-team/euralink/blob/main/CHANGELOG.md)
 
 ---
 
@@ -246,23 +247,45 @@ import { Euralink, Player, Node, Track } from 'euralink';
 
 ## 🌟 Official Bot
 
-<table>
-  <tr>
-    <td align="center" width="200">
-      <img src="https://media.discordapp.net/attachments/1379961285822644228/1380143372223909888/ChatGPT_Image_Jun_4_2025_08_36_33_PM_optimized_1000.png?ex=6842ce2d&is=68417cad&hm=5ce85d095418f15344303425747168d0ee57629609cd903ca16d203bf318a72c&=&format=webp&quality=lossless&width=971&height=971" width="96" height="96" alt="Euralink Bot"/><br>
-      <b>Euralink Official Bot</b><br>
-      <a href="https://discord.com/oauth2/authorize?client_id=YOUR_BOT_CLIENT_ID&scope=bot+applications.commands&permissions=3147776">
-        <img src="https://img.shields.io/badge/Add%20to%20Discord-5865F2?logo=discord&logoColor=white&style=for-the-badge" alt="Add to Discord"/>
-      </a><br>
-      <a href="https://github.com/euralink-team/euralink">
-        <img src="https://img.shields.io/badge/GitHub-Source%20Code-black?logo=github&style=for-the-badge" alt="GitHub Source"/>
-      </a><br>
-      <a href="https://discord.gg/4Dmfd6yE7F">
-        <img src="https://img.shields.io/badge/Join%20Support%20Server-5865F2?logo=discord&logoColor=white&style=for-the-badge" alt="Discord Server"/>
-      </a>
-    </td>
-  </tr>
-</table>
+<div style="text-align: center;">
+  <table>
+    <tr>
+      <td align="center" width="200">
+        <img src="https://media.discordapp.net/attachments/1379961285822644228/1380143372223909888/ChatGPT_Image_Jun_4_2025_08_36_33_PM_optimized_1000.png?ex=6842ce2d&is=68417cad&hm=5ce85d095418f15344303425747168d0ee57629609cd903ca16d203bf318a72c&=&format=webp&quality=lossless&width=971&height=971" width="96" height="96" alt="Euralink Bot"/><br>
+        <b>Euralink Official Bot</b><br>
+        <a href="https://discord.com/oauth2/authorize?client_id=YOUR_BOT_CLIENT_ID&scope=bot+applications.commands&permissions=3147776">
+          <img src="https://img.shields.io/badge/Add%20to%20Discord-5865F2?logo=discord&logoColor=white&style=for-the-badge" alt="Add to Discord"/>
+        </a><br>
+        <a href="https://github.com/euralink-team/euralink">
+          <img src="https://img.shields.io/badge/GitHub-Source%20Code-black?logo=github&style=for-the-badge" alt="GitHub Source"/>
+        </a><br>
+        <a href="https://discord.gg/4Dmfd6yE7F">
+          <img src="https://img.shields.io/badge/Join%20Support%20Server-5865F2?logo=discord&logoColor=white&style=for-the-badge" alt="Discord Server"/>
+        </a>
+      </td>
+    </tr>
+  </table>
+</div>
+
+---
+
+---
+
+## Honorable Mention
+
+<div style="text-align: center;">
+  <table style="margin: 0 auto;">
+    <tr>
+      <td style="text-align: center;">
+        <img src="https://avatars.githubusercontent.com/u/86982643?v=4" alt="Toddy Avatar" width="64" height="64" style="border-radius: 50%;"><br>
+        <strong>Honorable Mention:</strong><br>
+        <a href="https://github.com/ToddyTheNoobDud" target="_blank" rel="noopener noreferrer">
+          Toddy – Developer of Aqualink (Inspired tseep integration)
+        </a>
+      </td>
+    </tr>
+  </table>
+</div>
 
 ---
 
