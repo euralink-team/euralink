@@ -1,4 +1,4 @@
-const { EventEmitter } = require("events");
+const { EventEmitter } = require("tseep");
 const { Connection } = require("./Connection");
 const { Filters } = require("./Filters");
 const { Queue } = require("./Queue");

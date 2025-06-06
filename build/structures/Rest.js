@@ -10,7 +10,6 @@ class Rest {
     this.sessionId = options.sessionId;
     this.password = options.password;
     this.version = options.restVersion;
-    this.calls = 0;
   }
 
   setSessionId(sessionId) {
@@ -34,7 +33,6 @@ class Rest {
       throw new Error(`There was an Error while Making Node Request(likely caused by Network Issue): ${method} ${this.url}${endpoint}`, { cause: e });
     })
 
-    this.calls++;
 
     // Parses The Request
     const data = await this.parseResponse(response);
