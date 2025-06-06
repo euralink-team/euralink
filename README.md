@@ -24,6 +24,8 @@ A modern, fast, and feature-rich Lavalink client for Node.js and Discord bots.
 - **True auto-resume** after bot or node restarts (with state persistence)
 - **Automatic player migration** on node failure (failover)
 - **Granular queue controls** (shuffle, move, remove, view)
+- **Automatic voice channel status (EuraSync):** Updates the voice channel status with the current track, supports custom templates, fully automatic
+- **Automatic bot activity status:** Updates the bot's activity (user status) with the current track, supports custom templates, fully automatic
 
 ---
 
@@ -208,13 +210,49 @@ module.exports = {
 
 ---
 
-- Replace `YOUR_BOT_TOKEN_HERE` with your bot's token.
-- Make sure your Lavalink server is running and the credentials match.
-- Join a voice channel and type `!play Never Gonna Give You Up` in chat!
+## Voice Channel Status & Bot Activity Status
+
+Euralink can automatically update your bot's **voice channel status** (if supported by Discord) and **bot activity status** (user status) to show the currently playing track. This is fully automatic—no manual event handling needed!
+
+### Enable Voice Channel Status (EuraSync)
+
+```js
+const eura = new Euralink(client, nodes, {
+  // ...other options,
+  euraSync: true // Enable with default template: 'Now playing: {title}'
+});
+```
+
+#### Custom Template
+You can customize the status message:
+```js
+euraSync: { template: ':musical_note: {title} by {author}' }
+```
+Supported placeholders: `{title}`, `{author}`, `{uri}`, `{source}`
+
+---
+
+### Enable Bot Activity Status
+
+```js
+const eura = new Euralink(client, nodes, {
+  // ...other options,
+  setActivityStatus: true // Enable with default template: 'Now playing: {title}'
+});
+```
+
+#### Custom Template
+```js
+setActivityStatus: { template: ':notes: {title} by {author}' }
+```
+
+- The bot's activity will update on every track start, and clear when the queue ends.
+- No need to manually handle `trackStart` or `queueEnd` events for these features!
 
 ---
 
 ## Example Bot with Other Commands
+
 Go here [Example Bot](https://github.com/euralink-team/euralink/blob/main/test/euralink-bot.js)
 
 ---
@@ -266,6 +304,8 @@ import { Euralink, Player, Node, Track } from 'euralink';
     </tr>
   </table>
 </div>
+
+---
 
 ---
 

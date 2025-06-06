@@ -4,10 +4,19 @@ const { Player } = require("./Player");
 const { Track } = require("./Track");
 const { version: pkgVersion } = require("../../package.json")
 const fs = require('fs/promises');
+const { EuraSync } = require("./EuraSync");
 
 const versions = ["v3", "v4"];
 
 class Euralink extends EventEmitter {
+  /**
+   * @param {Client} client - Your Discord.js client
+   * @param {Array} nodes - Lavalink node configs
+   * @param {Object} options - Euralink options
+   * @param {Function} options.send - Function to send payloads to Discord
+   * @param {boolean|Object} [options.euraSync] - Enable voice status updates (default: false) or pass { template: '...' }
+   * @param {boolean|Object} [options.setActivityStatus] - Enable bot activity status updates (default: false) or pass { template: '...' }
+   */
   constructor(client, nodes, options) {
     super();
     if (!client) throw new Error("Client is required to initialize Euralink");
@@ -29,6 +38,21 @@ class Euralink extends EventEmitter {
     this.playlistInfo = null;
     this.pluginInfo = null;
     this.plugins = options.plugins;
+    if (options.euraSync === true) {
+      this.euraSync = new EuraSync(client); // default template
+    } else if (typeof options.euraSync === 'object' && options.euraSync !== null) {
+      this.euraSync = new EuraSync(client, options.euraSync); // custom template
+    } else {
+      this.euraSync = null;
+    }
+    // setActivityStatus support
+    if (options.setActivityStatus === true) {
+      this.setActivityStatus = { template: 'Now playing: {title}' };
+    } else if (typeof options.setActivityStatus === 'object' && options.setActivityStatus !== null) {
+      this.setActivityStatus = options.setActivityStatus;
+    } else {
+      this.setActivityStatus = null;
+    }
     /**
      * @description Package Version Of Euralink
      */
