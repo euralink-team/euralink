@@ -39,6 +39,8 @@ const eura = new Euralink(client, nodes, {
     },
     defaultSearchPlatform: 'ytmsearch',
     restVersion: 'v4',
+    euraSync: true,
+    setActivityStatus: true,
     plugins: [] // Optional
 });
 
