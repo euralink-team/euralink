@@ -1,9 +1,9 @@
 # Changelog
 
-## [0.1.3-sfix.1] - 2025-06-06
+## [0.1.3-sfix.2] - 2025-06-08
 
-### Added
-- **EuraSync (voice channel status):** Option to automatically update the voice channel status with the current track. Supports custom templates with placeholders (`{title}`, `{author}`, `{uri}`, `{source}`).
-- **setActivityStatus (bot activity):** Option to automatically update the bot's activity (user status) with the current track. Supports custom templates with placeholders (`{title}`, `{author}`, `{uri}`, `{source}`).
-- Both features are fully automatic—no manual event handling required.
-- Updated README with documentation and usage examples for these features.
+### Changed
+- **EuraSync**: Removed all internal `console.log` statements to reduce console clutter and improve production cleanliness.
+
+### Announcement
+- 🎉 The **official music bot is now live!** You can start using it with the latest features, including automatic voice status and activity updates.
