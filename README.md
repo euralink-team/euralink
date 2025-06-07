@@ -291,10 +291,10 @@ import { Euralink, Player, Node, Track } from 'euralink';
       <td align="center" width="200">
         <img src="https://media.discordapp.net/attachments/1379961285822644228/1380143372223909888/ChatGPT_Image_Jun_4_2025_08_36_33_PM_optimized_1000.png?ex=6842ce2d&is=68417cad&hm=5ce85d095418f15344303425747168d0ee57629609cd903ca16d203bf318a72c&=&format=webp&quality=lossless&width=971&height=971" width="96" height="96" alt="Euralink Bot"/><br>
         <b>Euralink Official Bot</b><br>
-        <a href="https://discord.com/oauth2/authorize?client_id=YOUR_BOT_CLIENT_ID&scope=bot+applications.commands&permissions=3147776">
+        <a href="https://discord.com/oauth2/authorize?client_id=1379804561166041210&permissions=3148800&scope=bot%20applications.commands">
           <img src="https://img.shields.io/badge/Add%20to%20Discord-5865F2?logo=discord&logoColor=white&style=for-the-badge" alt="Add to Discord"/>
         </a><br>
-        <a href="https://github.com/euralink-team/euralink">
+        <a href="https://github.com/Ryuzii/euralink-bot">
           <img src="https://img.shields.io/badge/GitHub-Source%20Code-black?logo=github&style=for-the-badge" alt="GitHub Source"/>
         </a><br>
         <a href="https://discord.gg/4Dmfd6yE7F">
