@@ -274,6 +274,17 @@ class Euralink extends EventEmitter {
     return player;
   }
 
+  async search(query, requester, source = this.defaultSearchPlatform) {
+    if (!query || !requester) return [];
+    try {
+      const { tracks } = await this.resolve({ query, source, requester });
+      return tracks ?? [];
+    } catch (error) {
+      console.error(`Search error for "${query}":`, error);
+      return [];
+    }
+  }
+
   /**
    * Saves all player states to a file.
    * @param {string} filePath
