@@ -1,9 +1,6 @@
 # Changelog
 
-## [0.1.3-sfix.2] - 2025-06-08
+## [0.1.3-sfix.3] - 2025-06-13
 
-### Changed
-- **EuraSync**: Removed all internal `console.log` statements to reduce console clutter and improve production cleanliness.
-
-### Announcement
-- 🎉 The **official music bot is now live!** You can start using it with the latest features, including automatic voice status and activity updates.
+### Added
+- Implemented new `search()` method to simplify querying tracks directly with a given requester and optional source.
