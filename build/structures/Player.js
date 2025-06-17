@@ -3,7 +3,7 @@ const { ActivityType } = require('discord.js');
 const { Connection } = require("./Connection");
 const { Filters } = require("./Filters");
 const { Queue } = require("./Queue");
-const { spAutoPlay, scAutoPlay } = require('../handlers/autoplay');
+const { spAutoPlay, scAutoPlay } = require('../handlers/autoPlay');
 const { inspect } = require("util");
 
 class Player extends EventEmitter {
