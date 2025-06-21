@@ -38,6 +38,8 @@ class Track {
     }
 
     async resolve(eura) {
+        await new Promise((res) => setTimeout(res, 0));
+
         const query = [this.info.author, this.info.title].filter((x) => !!x).join(" - ");
         const result = await eura.resolve({ query, source: eura.options.defaultSearchPlatform, requester: this.info.requester });
 

@@ -30,7 +30,7 @@ class EuraSync {
             if (reason) headers['X-Audit-Log-Reason'] = encodeURIComponent(reason);
 
             await axios.put(url, data, { headers });
-            console.log(`[EuraSync] Voice channel status updated for ${channelId}: "${data.status}"`);
+            // console.log(`[EuraSync] Voice channel status updated for ${channelId}: "${data.status}"`);
         } catch (error) {
             this._handleError(error, 'setVoiceStatus');
         }
@@ -51,7 +51,7 @@ class EuraSync {
             if (reason) headers['X-Audit-Log-Reason'] = encodeURIComponent(reason);
 
             await axios.put(url, data, { headers });
-            console.log(`[EuraSync] Voice channel status cleared for ${channelId}`);
+            // console.log(`[EuraSync] Voice channel status cleared for ${channelId}`);
         } catch (error) {
             this._handleError(error, 'clearVoiceStatus');
         }

@@ -72,6 +72,7 @@ export interface Player {
 export interface Euralink {
     saveAllPlayers(filePath?: string): Promise<void>;
     restoreAllPlayers(filePath?: string): Promise<void>;
+    resumeAllPlayerState(filePath?: string): Promise<void>;
 }
 
 export interface Queue<T = any> extends Array<T> {

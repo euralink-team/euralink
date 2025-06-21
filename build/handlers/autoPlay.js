@@ -1,76 +1,113 @@
-const undici = require('undici');
-const { JSDOM } = require('jsdom');
+const https = require('https');
 const crypto = require('crypto');
 
-async function scAutoPlay(url) {
-    const res = await undici.fetch(`${url}/recommended`);
-    if (res.status !== 200) throw new Error(`Failed to fetch URL. Status code: ${res.status}`);
-    const html = await res.text();
-    const dom = new JSDOM(html);
-    const document = dom.window.document;
+const httpAgent = new https.Agent({
+    keepAlive: true,
+    timeout: 8000,
+    maxSockets: 5,
+    maxFreeSockets: 2,
+    freeSocketTimeout: 4000
+});
 
-    const secondNoscript = document.querySelectorAll('noscript')[1];
-    if (!secondNoscript) throw new Error('No <noscript> found for recommendations.');
-    const sectionElement = secondNoscript.querySelector('section');
-    if (!sectionElement) throw new Error('No <section> found in <noscript>.');
-    const articleElements = sectionElement.querySelectorAll('article');
+const SC_LINK_PATTERN = /<a\s+itemprop="url"\s+href="(\/[^"]+)"/g;
+const SPOTIFY_TOTP_SECRET = Buffer.from('5507145853487499592248630329347', 'utf8');
 
-    const urls = [];
-    articleElements.forEach(articleElement => {
-        const h2Element = articleElement.querySelector('h2[itemprop="name"]');
-        if (!h2Element) return;
-        const aElement = h2Element.querySelector('a[itemprop="url"]');
-        if (!aElement) return;
-        const href = `https://soundcloud.com${aElement.getAttribute('href')}`;
-        urls.push(href);
+// Fetch with redirect support and timeout
+function fetchPage(url, options = {}) {
+    return new Promise((resolve, reject) => {
+        const req = https.get(url, { ...options, agent: httpAgent }, (res) => {
+            if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+                res.resume();
+                return fetchPage(new URL(res.headers.location, url).href, options)
+                    .then(resolve, reject);
+            }
+
+            if (res.statusCode !== 200) {
+                res.resume();
+                return reject(new Error(`Request failed with status: ${res.statusCode}`));
+            }
+
+            const data = [];
+            res.on('data', chunk => data.push(chunk));
+            res.on('end', () => resolve(Buffer.concat(data).toString()));
+        });
+
+        req.on('error', reject);
+        req.setTimeout(8000, () => req.destroy(new Error('Request timed out')));
     });
-
-    if (!urls.length) throw new Error('No recommended tracks found.');
-    return urls[Math.floor(Math.random() * urls.length)];
 }
 
-async function spAutoPlay(track_id) {
-    const TOTP_SECRET = new Uint8Array([53,53,48,55,49,52,53,56,53,51,52,56,55,52,57,57,53,57,50,50,52,56,54,51,48,51,50,57,51,52,55]);
+// SoundCloud autoplay handler
+async function scAutoPlay(baseUrl) {
+    try {
+        const html = await fetchPage(`${baseUrl}/recommended`);
+        const found = [];
+        let match;
 
-    function generateTotp() {
-        const hmac = crypto.createHmac('sha1', TOTP_SECRET);
-        const counter = Math.floor(Date.now() / 30000);
-        const counterBuffer = Buffer.alloc(8);
-        counterBuffer.writeBigInt64BE(BigInt(counter));
-        hmac.update(counterBuffer);
-        const hmacResult = hmac.digest();
-        const offset = hmacResult[hmacResult.length - 1] & 15;
-        const truncatedValue = 
-            ((hmacResult[offset] & 127) << 24) |
-            ((hmacResult[offset + 1] & 255) << 16) |
-            ((hmacResult[offset + 2] & 255) << 8) |
-            (hmacResult[offset + 3] & 255);
-        const totp = (truncatedValue % 1000000).toString().padStart(6, '0');
-        return [totp, counter * 30000];
+        while ((match = SC_LINK_PATTERN.exec(html)) !== null) {
+            found.push(`https://soundcloud.com${match[1]}`);
+            if (found.length >= 40) break;
+        }
+
+        if (!found.length) throw new Error('No recommended SoundCloud tracks found.');
+        return found[Math.floor(Math.random() * found.length)];
+    } catch (err) {
+        console.error('[SC Autoplay Error]', err.message);
+        return null;
     }
-
-    const [totp, timestamp] = generateTotp();
-    const params = {
-        "reason": "transport",
-        "productType": "embed",
-        "totp": totp,
-        "totpVer": 5,
-        "ts": timestamp,
-    };
-
-    const data = await undici.fetch("https://open.spotify.com/get_access_token?" + new URLSearchParams(params).toString());
-    const body = await data.json();
-
-    const res = await undici.fetch(`https://api.spotify.com/v1/recommendations?limit=10&seed_tracks=${track_id}` , {
-        headers: {
-            Authorization: `Bearer ${body.accessToken}`,
-            'Content-Type': 'application/json',
-        },
-    });
-
-    const json = await res.json();
-    if (!json.tracks || !json.tracks.length) throw new Error('No recommended tracks found.');
-    return json.tracks[Math.floor(Math.random() * json.tracks.length)].id;
 }
 
-module.exports = { scAutoPlay, spAutoPlay }; 
+// Generate TOTP used for Spotify embed access
+function createTotp() {
+    const time = Math.floor(Date.now() / 30000);
+    const buffer = Buffer.alloc(8);
+    buffer.writeBigUInt64BE(BigInt(time), 0);
+
+    const hash = crypto.createHmac('sha1', SPOTIFY_TOTP_SECRET).update(buffer).digest();
+    const offset = hash[hash.length - 1] & 0xf;
+
+    const code = (
+        ((hash[offset] & 0x7f) << 24) |
+        ((hash[offset + 1] & 0xff) << 16) |
+        ((hash[offset + 2] & 0xff) << 8) |
+        (hash[offset + 3] & 0xff)
+    );
+
+    return [(code % 1_000_000).toString().padStart(6, '0'), time * 30000];
+}
+
+// Spotify autoplay handler
+async function spAutoPlay(seedId) {
+    const [totp, timestamp] = createTotp();
+
+    const tokenEndpoint = `https://open.spotify.com/api/token?reason=init&productType=embed&totp=${totp}&totpVer=5&ts=${timestamp}`;
+    try {
+        const tokenData = await fetchPage(tokenEndpoint);
+        const tokenJson = JSON.parse(tokenData);
+        const token = tokenJson?.accessToken;
+
+        if (!token) throw new Error('No access token from Spotify');
+
+        const recUrl = `https://api.spotify.com/v1/recommendations?limit=10&seed_tracks=${seedId}`;
+        const recData = await fetchPage(recUrl, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        const parsed = JSON.parse(recData);
+        if (!parsed.tracks?.length) throw new Error('No recommended tracks received.');
+
+        const track = parsed.tracks[Math.floor(Math.random() * parsed.tracks.length)];
+        return track.id;
+    } catch (err) {
+        console.error('[Spotify Autoplay Error]', err.message);
+        throw err;
+    }
+}
+
+module.exports = {
+    scAutoPlay,
+    spAutoPlay
+};

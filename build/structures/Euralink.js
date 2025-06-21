@@ -198,6 +198,8 @@ class Euralink extends EventEmitter {
    * */
   async resolve({ query, source, requester, node }) {
     try {
+      await new Promise((res) => setTimeout(res, 0));
+
       if (!this.initiated) throw new Error("You have to initialize Euralink in your ready event");
       
       if(node && (typeof node !== "string" && !(node instanceof Node))) throw new Error(`'node' property must either be an node identifier/name('string') or an Node/Node Class, But Received: ${typeof node}`)

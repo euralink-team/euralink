@@ -78,6 +78,8 @@ class Player extends EventEmitter {
             this.current = await this.current.resolve(this.eura);
         }
 
+        await new Promise((res) => setTimeout(res, 0));
+
         this.playing = true;
         this.position = 0;
 
