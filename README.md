@@ -11,21 +11,36 @@ A modern, fast, and feature-rich Lavalink client for Node.js and Discord bots.
 
 ## Features
 
-- **Blazing fast** REST and WebSocket communication
-- **Easy-to-use** and modern API
-- **Supports** v3 and v4 lavalink protocols
-- **Advanced player controls** (queue, filters, autoplay, etc.)
-- **Multi-node support** with smart load balancing
-- **Rich audio filters** (nightcore, vaporwave, 8D, bassboost, and more)
-- **TypeScript types** included for full intellisense
-- **Plugin system** for easy extensibility
-- **Robust error handling** and event system
-- **Ready for Discord.js v14+ and modern Discord bots**
-- **True auto-resume** after bot or node restarts (with state persistence)
-- **Automatic player migration** on node failure (failover)
-- **Granular queue controls** (shuffle, move, remove, view)
-- **Automatic voice channel status (EuraSync):** Updates the voice channel status with the current track, supports custom templates, fully automatic
-- **Automatic bot activity status:** Updates the bot's activity (user status) with the current track, supports custom templates, fully automatic
+- ⚡ **Blazing fast** REST and WebSocket communication
+- 🧠 **Super-fast track and playlist loading**
+  Resolves tracks and playlists in milliseconds using optimized search logic and persistent connections.
+- ✅ **Easy-to-use** and modern API
+- 🔁 **Supports** v3 and v4 lavalink protocols
+- 🎛️ **Advanced player controls** (queue, filters, autoplay, etc.)
+- 🌐 **Multi-node support** with smart load balancing
+- 🎧 **Rich audio filters** (nightcore, vaporwave, 8D, bassboost, and more)
+- ✨ **TypeScript types** included for full intellisense
+- 🧩 **Plugin system** for easy extensibility
+- 🧱 **Robust error handling** and event system
+- 💬 **Ready for Discord.js v14+ and modern Discord bots**
+- 🧬 **True auto-resume** after bot or node restarts (with state persistence)
+- 🚦 **Automatic player migration** on node failure (failover)
+- 🎚️ **Granular queue controls** (shuffle, move, remove, view)
+- 🔊 **Automatic voice channel status (EuraSync):** 
+  Updates the voice channel status with the current track, supports custom templates, fully automatic
+  - Fully automatic
+  - Supports custom templates like `🎶 Now playing: {title}`
+- 🟢 **Automatic bot activity status:** 
+  Updates the bot's activity (user status) with the current track, supports custom templates, fully automatic
+  - Fully automatic
+  - Customizable templates
+- 🖼️ **Built-in playlist thumbnail fetcher**  
+  Retrieve playlist thumbnails from:
+  - Spotify  
+  - YouTube  
+  - SoundCloud  
+  - Apple Music  
+  Exposed as `Thumbnails` in the module for easy integration in embeds or dashboards.
 
 ---
 
@@ -248,6 +263,21 @@ setActivityStatus: { template: ':notes: {title} by {author}' }
 
 - The bot's activity will update on every track start, and clear when the queue ends.
 - No need to manually handle `trackStart` or `queueEnd` events for these features!
+
+---
+
+### Example: Fetching a Spotify Playlist Thumbnail
+
+```js
+const { Thumbnails } = require('euralink');
+
+const url = await Thumbnails.getSpotifyPlaylistThumbnail(
+  'yourPlaylistId',
+  'yourSpotifyClientId',
+  'yourSpotifyClientSecret'
+);
+console.log('Thumbnail:', url);
+```
 
 ---
 
