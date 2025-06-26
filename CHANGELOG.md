@@ -10,7 +10,6 @@
 * ⚡ **Node Performance & Stats**
   * Node destroy logic ensures no lingering references or timeouts, helping with memory and performance.
 * 🎵 **track.position and timestamp**
-  * Euralink.js: `savePlayer` and `loadPlayers` now save and restore both position and timestamp for each player.
 * ⏳ **Song Loading (async yield)**
   * The async yield (`await new Promise((res) => setTimeout(res, 0));`) is present and retained in the song loading logic for async compatibility.
 * 🛡️ **Extra: Defensive Cleanups**
