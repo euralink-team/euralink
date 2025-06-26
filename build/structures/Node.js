@@ -307,33 +307,25 @@ class Node {
  *                                  - Deleting the node from the node map.
  *                                  - Setting the connected state to false.
  */
-    destroy(clean=false) {
-        if(clean) {
-            this.ws?.removeAllListeners();
-            this.ws = null;
-            this.eura.emit("nodeDestroy", this);
-            this.eura.nodes.delete(this.name);
-            return;
+    destroy(clean = false) {
+        // Remove all event listeners
+        if (typeof this.removeAllListeners === 'function') this.removeAllListeners();
+        // Destroy all players associated with this node
+        for (const player of this.eura.players.values()) {
+            if (player.node === this) player.destroy();
         }
-
-        if (!this.connected) return;
-
-        this.eura.players.forEach((player) => {
-            if (player.node !== this) return;
-
-            player.destroy()
-        });
-
-        if (this.ws) this.ws.close(1000, "destroy");
-        this.ws?.removeAllListeners();
+        // Clear reconnect attempt if set
+        if (this.reconnectAttempt) clearTimeout(this.reconnectAttempt);
+        // Null out references to help GC
+        this.eura = null;
         this.ws = null;
-
-        clearTimeout(this.reconnectAttempt);
-
-        this.eura.emit("nodeDestroy", this);
-
-        this.eura.nodeMap.delete(this.name);
+        this.rest = null;
+        this.info = null;
+        // Defensive: clear any other intervals/timeouts if added in the future
+        // if (this._interval) clearInterval(this._interval);
+        // if (this._timeout) clearTimeout(this._timeout);
         this.connected = false;
+        this.eura?.emit("nodeDestroy", this);
     }
 
     disconnect() {

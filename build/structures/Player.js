@@ -332,14 +332,19 @@ class Player extends EventEmitter {
     }
 
     destroy() {
-        this.disconnect();
-
+        // Remove all event listeners
+        this.removeAllListeners();
+        // Destroy player on Lavalink
         this.node.rest.destroyPlayer(this.guildId);
-
-        this.eura.emit("playerDisconnect", this);
+        // Null out references to help GC
+        this.queue = null;
+        this.filters = null;
+        this.connection = null;
+        this.node = null;
+        // Defensive: clear any intervals/timeouts if added in the future
+        // if (this._interval) clearInterval(this._interval);
+        // if (this._timeout) clearTimeout(this._timeout);
         this.eura.emit("debug", this.guildId, "Destroyed the player");
-
-        this.eura.players.delete(this.guildId);
     }
 
     async handleEvent(payload) {

@@ -254,6 +254,20 @@ class Euralink extends EventEmitter {
         this.playlistInfo = response.playlistInfo ?? null;
       }
 
+      // Add thumbnail to playlistInfo if possible
+      if (this.playlistInfo) {
+        let thumbnail = null;
+        // Prefer pluginInfo artworkUrl if available
+        if (response.data?.pluginInfo?.artworkUrl) {
+          thumbnail = response.data.pluginInfo.artworkUrl;
+        } else if (response.data?.tracks?.[0]?.info?.artworkUrl) {
+          thumbnail = response.data.tracks[0].info.artworkUrl;
+        } else if (this.tracks && this.tracks[0] && this.tracks[0].info && this.tracks[0].info.thumbnail) {
+          thumbnail = this.tracks[0].info.thumbnail;
+        }
+        this.playlistInfo.thumbnail = thumbnail;
+      }
+
       this.loadType = response.loadType ?? null
       this.pluginInfo = response.pluginInfo ?? {};
 
@@ -287,46 +301,94 @@ class Euralink extends EventEmitter {
     }
   }
 
-  /**
-   * Saves all player states to a file.
-   * @param {string} filePath
-   */
-  async saveAllPlayers(filePath = './players.json') {
-    const data = Array.from(this.players.values()).map(player => player.toJSON());
+  async savePlayer(filePath = "./EuraPlayers.json") {
+    const data = Array.from(this.players.values())
+      .filter(player => player.current && player.current.identifier) // Only save if current track is valid
+      .map(player => ({
+        guildId: player.guildId,
+        textChannel: player.textChannel,
+        voiceChannel: player.voiceChannel,
+        track: {
+          identifier: player.current.identifier ?? null,
+          author: player.current.author ?? null,
+          title: player.current.title ?? null,
+          uri: player.current.uri ?? null,
+          sourceName: player.current.sourceName ?? null,
+          artworkUrl: player.current.artworkUrl ?? null,
+          duration: player.current.duration ?? null,
+          position: player.position ?? 0,
+        },
+        requester: player.requester || player.current?.requester || null,
+        volume: player.volume ?? 100,
+        paused: player.paused ?? false,
+        position: player.position ?? 0, // Save player position
+        timestamp: player.timestamp ?? 0 // Save player timestamp
+      }));
+    console.log(`Saving ${data.length} players to ${filePath}`);
     await fs.writeFile(filePath, JSON.stringify(data, null, 2));
-    this.emit('debug', `Saved all player states to ${filePath}`);
+    this.emit("debug", `Saved players to ${filePath}`);
   }
 
-  /**
-   * Restores all player states from a file.
-   * @param {string} filePath
-   */
-  async restoreAllPlayers(filePath = './players.json') {
+  async loadPlayers(filePath = "./EuraPlayers.json") {
+    const fsSync = require('fs');
+    if (!fsSync.existsSync(filePath)) {
+      this.emit("debug", `No player data found at ${filePath}`);
+      return;
+    }
     try {
+      await this.waitForFirstNode();
       const raw = await fs.readFile(filePath, 'utf8');
-      const data = JSON.parse(raw);
-      for (const playerData of data) {
-        // Find the best node for this player
-        const node = this.leastUsedNodes[0];
-        if (!node) continue;
-        const player = this.players.get(playerData.guildId) || this.createPlayer(node, playerData);
-        // Restore state
-        player.position = playerData.position;
-        player.current = playerData.current;
-        if (Array.isArray(playerData.queue)) player.queue.add(...playerData.queue);
-        player.previousTracks = playerData.previousTracks || [];
-        player.playing = playerData.playing;
-        player.paused = playerData.paused;
-        if (playerData.filters && player.filters && typeof player.filters.setPayload === 'function') {
-          player.filters.setPayload(playerData.filters);
+      const playerList = JSON.parse(raw);
+
+      for (const savedPlayer of playerList) {
+        const {
+          guildId,
+          textChannel,
+          voiceChannel,
+          track: savedTrack,
+          volume: savedVolume,
+          paused: wasPaused,
+          requester: savedRequester,
+          position: savedPosition,
+          timestamp: savedTimestamp
+        } = savedPlayer;
+
+        let player = this.players.get(guildId);
+
+        // Create player if it doesn't exist
+        if (!player) {
+          player = await this.createConnection({
+            guildId,
+            textChannel,
+            voiceChannel,
+            defaultVolume: savedVolume || 65,
+            deaf: true
+          });
         }
-        player.isAutoplay = playerData.isAutoplay;
-        // Optionally, call restart to resume playback
-        if (player.current && player.playing) player.restart();
+
+        // Restore the current track if available
+        if (savedTrack && player) {
+          const resolved = await this.resolve({ query: savedTrack.uri, requester: savedRequester });
+          if (resolved.tracks && resolved.tracks.length > 0) {
+            player.queue.add(resolved.tracks[0]);
+            player.position = savedTrack.position || savedPosition || 0;
+            player.timestamp = savedTimestamp || 0;
+          } else {
+            this.emit("debug", `Could not resolve track for guild ${guildId}: ${savedTrack.uri}`);
+          }
+        }
+
+        // Restore paused state and start playback if needed
+        if (player) {
+          player.paused = !!wasPaused;
+          if (!player.playing && !player.paused && player.queue.size > 0) {
+            player.play();
+          }
+        }
       }
-      this.emit('debug', `Restored all player states from ${filePath}`);
-    } catch (e) {
-      this.emit('debug', `No player state file found or failed to restore: ${e.message}`);
+      this.emit("debug", `Loaded players from ${filePath}`);
+    } catch (error) {
+      console.error(`Failed to load players from ${filePath}:`, error);
     }
   }
 }

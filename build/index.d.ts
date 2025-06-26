@@ -69,12 +69,6 @@ export interface Player {
     removeQueueItem(index: number): any;
 }
 
-export interface Euralink {
-    saveAllPlayers(filePath?: string): Promise<void>;
-    restoreAllPlayers(filePath?: string): Promise<void>;
-    resumeAllPlayerState(filePath?: string): Promise<void>;
-}
-
 export interface Queue<T = any> extends Array<T> {
     shuffle(): this;
     move(from: number, to: number): this;

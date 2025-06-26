@@ -9,8 +9,6 @@ const { Rest } = require("./structures/Rest");
 const { Track } = require("./structures/Track");
 const { EuraSync } = require("./structures/EuraSync");
 
-const ThumbnailHandlers = require("./handlers/playlistThumbnails");
-
 module.exports = {
     Euralink,
     Node,
@@ -21,6 +19,5 @@ module.exports = {
     Filters,
     Connection,
     Rest,
-    EuraSync,
-    Thumbnails: ThumbnailHandlers,
+    EuraSync
 };

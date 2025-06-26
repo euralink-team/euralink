@@ -23,7 +23,6 @@ A modern, fast, and feature-rich Lavalink client for Node.js and Discord bots.
 - 🧩 **Plugin system** for easy extensibility
 - 🧱 **Robust error handling** and event system
 - 💬 **Ready for Discord.js v14+ and modern Discord bots**
-- 🧬 **True auto-resume** after bot or node restarts (with state persistence)
 - 🚦 **Automatic player migration** on node failure (failover)
 - 🎚️ **Granular queue controls** (shuffle, move, remove, view)
 - 🔊 **Automatic voice channel status (EuraSync):** 
@@ -34,13 +33,8 @@ A modern, fast, and feature-rich Lavalink client for Node.js and Discord bots.
   Updates the bot's activity (user status) with the current track, supports custom templates, fully automatic
   - Fully automatic
   - Customizable templates
-- 🖼️ **Built-in playlist thumbnail fetcher**  
-  Retrieve playlist thumbnails from:
-  - Spotify  
-  - YouTube  
-  - SoundCloud  
-  - Apple Music  
-  Exposed as `Thumbnails` in the module for easy integration in embeds or dashboards.
+- 🖼️ **Playlist thumbnails in playlistInfo**  
+  `playlistInfo.thumbnail` is now available directly after a playlist search, for easy use in embeds and dashboards (no separate fetcher needed).
 
 ---
 
