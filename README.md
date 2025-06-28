@@ -10,7 +10,7 @@
 [![GitHub stars](https://img.shields.io/github/stars/euralink-team/euralink.svg?style=for-the-badge&logo=github)](https://github.com/euralink-team/euralink)
 [![MIT License](https://img.shields.io/github/license/euralink-team/euralink?style=for-the-badge)](LICENSE)
 [![Discord](https://img.shields.io/badge/Discord-Join%20Server-5865F2?style=for-the-badge&logo=discord)](https://discord.gg/4Dmfd6yE7F)
-[![Documentation](https://img.shields.io/badge/Docs-View%20Documentation-brightgreen?style=for-the-badge)](https://euralink.js.org/)
+[![Documentation](https://img.shields.io/badge/Docs-View%20Documentation-brightgreen?style=for-the-badge)](https://euralink-website.vercel.app/)
 
 *Built with ❤️ for the Discord.js community*
 
@@ -644,7 +644,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🔗 Links
 
-- [📚 Documentation](https://euralink.js.org/)
+- [📚 Documentation](https://euralink-website.vercel.app/)
 - [🐙 GitHub Repository](https://github.com/euralink-team/euralink)
 - [📦 NPM Package](https://www.npmjs.com/package/euralink)
 - [📋 Changelog](https://github.com/euralink-team/euralink/blob/main/CHANGELOG.md)
