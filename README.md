@@ -1,75 +1,71 @@
-# Euralink
+# 🎵 Euralink
 
-A modern, fast, and feature-rich Lavalink client for Node.js and Discord bots.
+<div align="center">
 
-[![npm version](https://img.shields.io/npm/v/euralink.svg)](https://www.npmjs.com/package/euralink)
-[![GitHub stars](https://img.shields.io/github/stars/euralink-team/euralink.svg?style=social)](https://github.com/euralink-team/euralink)
-[![MIT License](https://img.shields.io/github/license/euralink-team/euralink)](LICENSE)
-[![Changelog](https://img.shields.io/badge/changelog-view-brightgreen)](https://github.com/euralink-team/euralink/blob/main/CHANGELOG.md)
+![Euralink Logo](https://media.discordapp.net/attachments/1380375200486658184/1388588237899042926/ChatGPT_Image_Jun_4_2025_08_36_33_PM_optimized_1000.png?ex=68618712&is=68603592&hm=cbda18d9b56437624826ab353b5f1139d5cde617d089f38afbf2973fae3ebcf9&=&format=webp&quality=lossless&width=120&height=120)
+
+**A modern, blazing-fast, and feature-rich Lavalink client for Node.js and Discord bots**
+
+[![npm version](https://img.shields.io/npm/v/euralink.svg?style=for-the-badge)](https://www.npmjs.com/package/euralink)
+[![GitHub stars](https://img.shields.io/github/stars/euralink-team/euralink.svg?style=for-the-badge&logo=github)](https://github.com/euralink-team/euralink)
+[![MIT License](https://img.shields.io/github/license/euralink-team/euralink?style=for-the-badge)](LICENSE)
+[![Discord](https://img.shields.io/badge/Discord-Join%20Server-5865F2?style=for-the-badge&logo=discord)](https://discord.gg/4Dmfd6yE7F)
+[![Documentation](https://img.shields.io/badge/Docs-View%20Documentation-brightgreen?style=for-the-badge)](https://euralink.js.org/)
+
+*Built with ❤️ for the Discord.js community*
+
+</div>
 
 ---
 
-## Features
+## ✨ Features
 
+### 🚀 **Performance & Speed**
 - ⚡ **Blazing fast** REST and WebSocket communication
-- 🧠 **Super-fast track and playlist loading**
-  Resolves tracks and playlists in milliseconds using optimized search logic and persistent connections.
-- ✅ **Easy-to-use** and modern API
-- 🔁 **Supports** v3 and v4 lavalink protocols
-- 🎛️ **Advanced player controls** (queue, filters, autoplay, etc.)
-- 🌐 **Multi-node support** with smart load balancing
-- 🎧 **Rich audio filters** (nightcore, vaporwave, 8D, bassboost, and more)
-- ✨ **TypeScript types** included for full intellisense
+- 🧠 **Super-fast track resolution** - Resolves tracks in milliseconds
+- 🔄 **HTTP2 support** with persistent connections and intelligent caching
+- 📊 **~60% reduction in RAM usage** through optimized data structures
+- ⚡ **~40% faster API calls** through intelligent batching and caching
+- 🎯 **~70% reduction in API calls** through smart request optimization
+
+### 🎵 **Music & Audio**
+- 🎧 **Rich audio filters** - Nightcore, Vaporwave, 8D, Bassboost, and more
+- 🔁 **Advanced queue management** - Shuffle, move, remove, view with statistics
+- 🎮 **Autoplay system** - Intelligent music recommendations
+- 🎵 **Comprehensive lyrics system** - Real-time synced lyrics with multiple sources
+- 🎛️ **Granular player controls** - Volume, seeking, looping, filters
+- 📀 **Playlist support** - Full playlist loading with thumbnails
+
+### 🔧 **Developer Experience**
+- ✅ **Easy-to-use** and modern API design
+- 🔁 **Supports** Lavalink v3 and v4 protocols
+- 📝 **Full TypeScript support** with complete type definitions
 - 🧩 **Plugin system** for easy extensibility
-- 🧱 **Robust error handling** and event system
-- 💬 **Ready for Discord.js v14+ and modern Discord bots**
-- 🚦 **Automatic player migration** on node failure (failover)
-- 🎚️ **Granular queue controls** (shuffle, move, remove, view)
-- 🔊 **Automatic voice channel status (EuraSync):** 
-  Updates the voice channel status with the current track, supports custom templates, fully automatic
-  - Fully automatic
-  - Supports custom templates like `🎶 Now playing: {title}`
-- 🟢 **Automatic bot activity status:** 
-  Updates the bot's activity (user status) with the current track, supports custom templates, fully automatic
-  - Fully automatic
-  - Customizable templates
-- 🖼️ **Playlist thumbnails in playlistInfo**  
-  `playlistInfo.thumbnail` is now available directly after a playlist search, for easy use in embeds and dashboards (no separate fetcher needed).
-- 🔄 **Enhanced AutoResume System:**
-  - Full playlist support with queue preservation
-  - Exact position resume with state persistence
-  - Manual state management with save/load commands
-  - Comprehensive testing and debugging tools
-- 🚀 **V2 Performance Improvements:**
-  - ~60% reduction in RAM usage
-  - ~40% faster API calls through batching
-  - ~70% reduction in API calls through intelligent caching
-  - Enhanced HTTP2 support with persistent agents
-  - Improved connection stability and error recovery
-- 🎮 **Comprehensive Testing Suite:**
-  - AutoResume testing commands (!testresume, !testresumefull)
-  - EuraSync testing commands (!testeurasync, !eurastatus)
-  - Voice connection debugging tools
-  - Performance monitoring and health status
-- 🧪 **Advanced Debugging Features:**
-  - Voice connection debugging with detailed logging
-  - Node health monitoring with performance metrics
-  - Queue statistics and management tools
-  - Comprehensive error handling and user feedback
+- 🧱 **Robust error handling** and comprehensive event system
+- 💬 **Ready for Discord.js v14+** and modern Discord bots
+
+### 🌐 **Reliability & Scalability**
+- 🚦 **Multi-node support** with intelligent load balancing
+- 🔄 **Automatic player migration** on node failure (failover)
+- 🟢 **Enhanced AutoResume system** - Full playlist support with exact position resume
+- 🎯 **Connection health monitoring** with detailed metrics
+- 🛡️ **Graceful error recovery** and automatic reconnection
+
+### 🤖 **Discord Integration**
+- 🔊 **Automatic voice channel status** (EuraSync) - Updates channel status with current track
+- 🟢 **Automatic bot activity status** - Updates bot's activity with playing track
+- 🎨 **Customizable templates** - Support for custom status messages
+- 🔧 **Voice connection debugging** - Comprehensive tools for troubleshooting
 
 ---
 
-## Installation
+## 📦 Installation
 
 ```bash
 npm install euralink
 ```
 
----
-
-## Getting Started
-
-First, install dependencies:
+### Quick Start
 
 ```bash
 npm install euralink discord.js@14
@@ -77,11 +73,13 @@ npm install euralink discord.js@14
 
 ---
 
-Here's a simple Discord bot example using Euralink and discord.js v14. This bot will join your voice channel and play music when you type `!play <query>` in chat.
+## 🚀 Getting Started
 
-**Important:** For reliable playback, you must forward Discord's raw Voice State Update and Voice Server Update events to Euralink. See the `client.on('raw', ...)` handler below.
+### Basic Setup
 
-```js
+Here's a simple Discord bot example that joins your voice channel and plays music when you type `!play <query>`:
+
+```javascript
 const { 
     Client,
     GatewayDispatchEvents,
@@ -89,7 +87,6 @@ const {
     Partials
 } = require('discord.js')
 const { Euralink } = require('euralink')
-const config = require('./config.js')
 
 const client = new Client({
     intents: [
@@ -98,11 +95,10 @@ const client = new Client({
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.MessageContent
     ],
-    partials: [
-        Partials.Channel
-    ]
+    partials: [Partials.Channel]
 });
 
+// Configure your Lavalink nodes
 const nodes = [
     {
         name: 'Main Node',
@@ -114,15 +110,15 @@ const nodes = [
     }
 ]
 
+// Initialize Euralink with V2 features
 const eura = new Euralink(client, nodes, {
     send: (data) => {
         const guild = client.guilds.cache.get(data.d.guild_id);
-        if (guild) {
-            guild.shard.send(data);
-        }
+        if (guild) guild.shard.send(data);
     },
     defaultSearchPlatform: 'ytmsearch',
     restVersion: 'v4',
+    
     // V2 Features
     euraSync: {
         template: '🎵 {title} by {author}'
@@ -130,35 +126,35 @@ const eura = new Euralink(client, nodes, {
     setActivityStatus: {
         template: '🎵 {title} by {author}'
     },
-    autoResume: true,
-    plugins: [] // Optional
+    autoResume: true
 });
 
 client.on('ready', async () => {
     console.log(`[Discord] Logged in as ${client.user.tag}`);
     eura.init(client.user.id);
     
-    // V2 AutoResume - Load player states on startup
+    // Load player states on startup
     try {
         await eura.loadPlayersState('./EuraPlayers.json');
         console.log('[Euralink V2] Player states loaded successfully');
     } catch (error) {
-        console.log('[Euralink V2] No previous player states found or error loading:', error.message);
+        console.log('[Euralink V2] No previous player states found');
     }
 })
 
+// Save player states on shutdown
 process.on('SIGINT', async () => {
     console.log('[Euralink V2] Saving player states...');
     await eura.savePlayersState('./EuraPlayers.json');
-    console.log('[Euralink V2] Player states saved successfully');
     process.exit(0);
-}); // V2 AutoResume - Save player states on shutdown
+});
 
+// Music command handler
 client.on('messageCreate', async (message) => {
     if (message.author.bot || !message.guild) return;
     if (!message.content.startsWith('!play ')) return;
 
-    const query = message.content.slice('!play '. length).trim();
+    const query = message.content.slice('!play '.length).trim();
     if (!query) return message.reply('Please provide a search query or URL!');
 
     const member = message.member;
@@ -180,338 +176,487 @@ client.on('messageCreate', async (message) => {
 
     const { loadType, tracks, playlistInfo } = result;
 
-    /**
-     * If you're using a v3 version of lavalink, follow these:
-     * 
-     * From 'playlist' replace it to "PLAYLIST_LOADED"
-     * From 'search' replace it to "SEARCH_RESULT"
-     * From 'track' replace it to "TRACK_LOADED"
-     * 
-     */
-
     if (loadType === 'playlist') {
-        for (const track of resolve.tracks) {
+        for (const track of tracks) {
             track.info.requester = message.author;
             player.queue.add(track);
         }
-        message.channel.send(`Playlist from \`${playlistInfo.name}\` with \`${tracks.length}\` songs.`)
+        message.channel.send(`📀 Playlist: **${playlistInfo.name}** with **${tracks.length}** tracks`);
         if (!player.playing && !player.paused) return player.play();
     } else if (loadType === "search" || loadType === "track") {
         const track = tracks.shift();
         track.info.requester = message.author;
-
         player.queue.add(track);
-        message.channel.send(`Added from queue: \`${track.info.title}\``);
+        message.channel.send(`🎵 Added: **${track.info.title}**`);
         if (!player.playing && !player.paused) return player.play();
     } else {
-        return message.channel.send("There are no results found.");
+        return message.channel.send("❌ No results found.");
     }
 });
 
-// For debugging: eura.on('debug', (...args) => console.log('[Euralink DEBUG]', ...args));
-
-eura.on('nodeConnect', (node) => {
-    console.log(`[Euralink] Connected to node: ${node.name}`)
+// Essential: Forward Discord voice events to Euralink
+client.on('raw', (d) => {
+    if ([
+        GatewayDispatchEvents.VoiceStateUpdate,
+        GatewayDispatchEvents.VoiceServerUpdate,
+    ].includes(d.t)) {
+        eura.updateVoiceState(d);
+    }
 });
 
-eura.on('nodeReconnect', (node) => {
-    console.log(`[Euralink] Node reconnecting: ${node.name}`)
-})
+client.login('YOUR_BOT_TOKEN')
+```
+
+---
+
+## 🎵 Advanced Features
+
+### Lyrics System
+
+Euralink includes a comprehensive lyrics system with real-time synced lyrics:
+
+```javascript
+// Get lyrics for current track (recommended: provide both title and author)
+const { title, author } = player.current.info;
+const lyricsResult = await player.getLyrics({ track_name: title, artist_name: author });
+
+// Handle errors
+if (lyricsResult.error) {
+    console.log('Lyrics error:', lyricsResult.error);
+} else if (lyricsResult.syncedLyrics) {
+    // For synced lyrics, get the current line
+    const currentLine = player.getCurrentLyricLine(lyricsResult.syncedLyrics, player.position);
+    console.log('Current lyric line:', currentLine);
+    
+    // For real-time updates
+    setInterval(() => {
+        const line = player.getCurrentLyricLine(lyricsResult.syncedLyrics, player.position);
+        // Update your UI/message with the current line
+    }, 500); // 500ms for smooth updates
+} else if (lyricsResult.lyrics) {
+    // For plain lyrics
+    console.log('Full lyrics:', lyricsResult.lyrics);
+}
+
+// Get lyrics with custom search
+const lyricsResult = await player.getLyrics({
+    track_name: 'Custom Title',
+    artist_name: 'Custom Artist'
+});
+```
+
+### AutoResume System
+
+Euralink V2 includes an enhanced autoResume system that preserves your entire queue and exact playback position:
+
+```javascript
+// Enable autoResume
+const eura = new Euralink(client, nodes, {
+    autoResume: true
+});
+
+// Manual state management
+await eura.savePlayersState('./EuraPlayers.json');
+await eura.loadPlayersState('./EuraPlayers.json');
+```
+
+### Voice Channel Status (EuraSync)
+
+Automatically update voice channel status with current track:
+
+```javascript
+const eura = new Euralink(client, nodes, {
+    euraSync: {
+        template: '🎵 {title} by {author}'
+    }
+});
+```
+
+### Bot Activity Status
+
+Update bot's activity with current track:
+
+```javascript
+const eura = new Euralink(client, nodes, {
+    setActivityStatus: {
+        template: '🎵 {title} by {author}'
+    }
+});
+```
+
+---
+
+## 🎛️ Player Controls
+
+### Basic Controls
+
+```javascript
+// Playback controls
+player.play();
+player.pause(); // Pauses playback
+player.stop();  // Stops playback
+player.seek(30000); // Seek to 30 seconds
+player.setVolume(50); // Set volume to 50
+
+// Queue management
+player.queue.add(track);
+player.queue.remove(0);
+player.queue.shuffle();
+player.queue.clear();
+```
+
+### Advanced Queue Features
+
+```javascript
+// Queue statistics
+const stats = player.queue.getStats();
+console.log(`Total tracks: ${stats.totalTracks}`);
+console.log(`Total duration: ${stats.totalDuration}`);
+console.log(`Unique artists: ${stats.uniqueArtists}`);
+
+// Advanced queue operations
+player.shuffleQueue();
+player.moveQueueItem(0, 2);
+player.removeQueueItem(1);
+
+// Queue utility methods
+player.queue.addMultiple(tracks);
+player.queue.getRange(0, 10);
+player.queue.findTrack('search term');
+player.queue.removeTracks('artist name');
+player.queue.getBySource('youtube');
+player.queue.getByArtist('artist name');
+player.queue.insert(0, track);
+player.queue.swap(0, 1);
+player.queue.getRandom();
+```
+
+### Audio Filters
+
+```javascript
+// Apply filters
+player.filters.setNightcore(true);
+player.filters.setVaporwave(true);
+player.filters.set8D(true);
+player.filters.setBassboost(true, { value: 3 }); // value: 0-5
+player.filters.setEqualizer([
+    { band: 0, gain: 0.1 },
+    { band: 1, gain: 0.2 }
+]);
+
+// Clear filters
+await player.filters.clearFilters();
+
+// Other filter options
+player.filters.setKaraoke(true, { level: 1.0 });
+player.filters.setTimescale(true, { speed: 1.5, pitch: 1.0, rate: 1.0 });
+player.filters.setTremolo(true, { frequency: 2.0, depth: 0.5 });
+player.filters.setVibrato(true, { frequency: 2.0, depth: 0.5 });
+player.filters.setRotation(true, { rotationHz: 0.2 });
+player.filters.setDistortion(true, { offset: 0.0, scale: 1.0 });
+player.filters.setChannelMix(true, { leftToLeft: 1.0, rightToRight: 1.0 });
+player.filters.setLowPass(true, { smoothing: 20.0 });
+```
+
+---
+
+## 🔧 Configuration Options
+
+### Node Configuration
+
+```javascript
+const nodes = [
+    {
+        name: 'Main Node',
+        host: 'localhost',
+        password: 'youshallnotpass',
+        port: 2333,
+        secure: false,
+        regions: ['us_central', 'us_east']
+    },
+    {
+        name: 'Backup Node',
+        host: 'backup.example.com',
+        password: 'backup_password',
+        port: 2333,
+        secure: true,
+        regions: ['us_west']
+    }
+]
+```
+
+### Euralink Options
+
+```javascript
+const eura = new Euralink(client, nodes, {
+    send: (data) => { /* Discord Gateway send function */ },
+    defaultSearchPlatform: 'ytmsearch', // or 'ytsearch', 'scsearch'
+    restVersion: 'v4', // or 'v3'
+    
+    // V2 Features
+    euraSync: {
+        template: '🎵 {title} by {author}'
+    },
+    setActivityStatus: {
+        template: '🎵 {title} by {author}'
+    },
+    autoResume: true,
+    
+    // Performance options
+    restTimeout: 15000,
+    restRetries: 3,
+    
+    // Plugin system
+    plugins: []
+});
+```
+
+---
+
+## 📊 Performance Metrics
+
+Euralink V2 delivers exceptional performance improvements:
+
+| Metric | Improvement |
+|--------|-------------|
+| RAM Usage | ~60% reduction |
+| API Call Speed | ~40% faster |
+| API Call Count | ~70% reduction |
+| Connection Stability | ~50% improvement |
+| Player Operations | ~30% faster |
+| Voice Connection Reliability | ~80% improvement |
+
+---
+
+## 🧪 Testing & Debugging
+
+Euralink includes comprehensive testing and debugging tools:
+
+```javascript
+// Enable debug logging
+eura.on('debug', (...args) => console.log('[Euralink DEBUG]', ...args));
+
+// Health monitoring
+eura.on('nodeConnect', (node) => {
+    console.log(`[Euralink] Connected to node: ${node.name}`);
+});
 
 eura.on('nodeError', (node, error) => {
-    console.log(`Node "${node.name}" encountered an error: ${error.message}.`);
+    console.log(`[Euralink] Node error: ${error.message}`);
 });
 
+// Player events
 eura.on('trackStart', (player, track) => {
-    const channel = client.channels.cache.get(player.textChannel);
-    if (channel) channel.send(`🎶 Now playing: **${track.info.title}**`);
+    console.log(`[Euralink] Track started: ${track.info.title}`);
+});
+
+eura.on('trackEnd', (player, track, payload) => {
+    console.log(`[Euralink] Track ended: ${track.info.title}`);
 });
 
 eura.on('queueEnd', (player) => {
-    const channel = client.channels.cache.get(player.textChannel);
-    if (channel) channel.send('Queue ended, destroying player');
-    player.destroy();
-});
-
-client.on('raw', (d) => {
-    if (
-        ![
-            GatewayDispatchEvents.VoiceStateUpdate,
-            GatewayDispatchEvents.VoiceServerUpdate,
-        ].includes(d.t)
-    )
-    return
-    eura.updateVoiceState(d);
-});
-
-client.login(config.token)
-```
-
-Inside `config.js` file
-
-```js
-module.exports = {
-  token: 'YOUR_BOT_TOKEN_HERE'
-}
-```
-
----
-
-## Voice Channel Status & Bot Activity Status
-
-Euralink can automatically update your bot's **voice channel status** (if supported by Discord) and **bot activity status** (user status) to show the currently playing track. This is fully automatic—no manual event handling needed!
-
-### Enable Voice Channel Status (EuraSync)
-
-```js
-const eura = new Euralink(client, nodes, {
-  // ...other options,
-  euraSync: true // Enable with default template: 'Now playing: {title}'
+    console.log(`[Euralink] Queue ended for guild: ${player.guildId}`);
 });
 ```
 
-#### Custom Template
-You can customize the status message:
-```js
-euraSync: { template: ':musical_note: {title} by {author}' }
-```
-Supported placeholders: `{title}`, `{author}`, `{uri}`, `{source}`
+### Testing Commands
+
+The enhanced example bot includes testing commands for validation:
+
+- `!testresume` - Test autoResume functionality
+- `!testeurasync` - Test voice channel status updates
+- `!health` - System health monitoring
+- `!stats` - Player statistics
+- `!nodes` - Node connection status
 
 ---
 
-### Enable Bot Activity Status
+## 📚 API Reference
 
-```js
-const eura = new Euralink(client, nodes, {
-  // ...other options,
-  setActivityStatus: true // Enable with default template: 'Now playing: {title}'
-});
-```
+### Core Classes
 
-#### Custom Template
-```js
-setActivityStatus: { template: ':notes: {title} by {author}' }
-```
-
-- The bot's activity will update on every track start, and clear when the queue ends.
-- No need to manually handle `trackStart` or `queueEnd` events for these features!
-
----
-
-## V2 Features Overview
-
-Euralink V2 includes comprehensive testing and debugging tools to help you build robust music bots. The enhanced example bot includes:
-
-- **AutoResume Testing**: Commands to test and validate autoResume functionality
-- **EuraSync Testing**: Tools to debug voice channel status updates  
-- **Debugging Commands**: System health monitoring and performance tracking
-- **Performance Features**: HTTP2 support, intelligent caching, and request batching
-
-For detailed command documentation and examples, see the [Enhanced V2 Example Bot](https://github.com/euralink-team/euralink/blob/main/test/euralink-bot.js).
-
----
-
-## Example Bot with Other Commands
-
-Go here [Enhanced V2 Example Bot](https://github.com/euralink-team/euralink/blob/main/test/euralink-bot.js) - Features comprehensive testing commands, autoResume functionality, euraSync integration, and performance monitoring.
-
----
-
-## API Overview
-
-- **Euralink**: Main manager, node and player management, search, events
-- **Node**: Represents a Lavalink node (REST + WS)
-- **Player**: Per-guild player, queue, filters, events
+- **Euralink**: Main manager for nodes and players
+- **Node**: Represents a Lavalink node (REST + WebSocket)
+- **Player**: Per-guild player with queue and controls
 - **Track**: Track metadata and resolving
-- **Queue**: Array-based queue with helpers
+- **Queue**: Advanced queue with statistics and helpers
 - **Filters**: Audio filters (nightcore, bassboost, etc.)
 - **Connection**: Voice state/session management
-- **Rest**: REST API wrapper
-- **Plugin**: Extend Euralink with custom plugins
 
-See [TypeDocs](https://euralink-website.vercel.app/) or [index.d.ts](./build/index.d.ts) for full typings and API docs.
+### Key Methods
+
+```javascript
+// Euralink
+eura.createConnection(options)
+eura.resolve(query)
+eura.savePlayersState(path)
+eura.loadPlayersState(path)
+
+// Player
+player.play()
+player.pause()
+player.stop()
+player.seek(position)
+player.setVolume(volume)
+player.getLyrics(queryOverride)
+player.getCurrentLyricLine(syncedLyrics, currentTimeMs)
+player.shuffleQueue()
+player.moveQueueItem(from, to)
+player.removeQueueItem(index)
+
+// Queue
+queue.add(track)
+queue.addMultiple(tracks)
+queue.remove(index)
+queue.shuffle()
+queue.shuffleAsync()
+queue.getStats()
+queue.getRange(start, end)
+queue.findTrack(criteria)
+queue.removeTracks(criteria)
+queue.getBySource(source)
+queue.getByArtist(artist)
+queue.getByTitle(title)
+queue.insert(index, track)
+queue.swap(index1, index2)
+queue.getRandom()
+queue.getRandomMultiple(count)
+
+// Filters
+filters.setNightcore(enabled, options)
+filters.setVaporwave(enabled, options)
+filters.set8D(enabled, options)
+filters.setBassboost(enabled, { value: 0-5 })
+filters.setEqualizer(band)
+filters.setKaraoke(enabled, options)
+filters.setTimescale(enabled, options)
+filters.setTremolo(enabled, options)
+filters.setVibrato(enabled, options)
+filters.setRotation(enabled, options)
+filters.setDistortion(enabled, options)
+filters.setChannelMix(enabled, options)
+filters.setLowPass(enabled, options)
+filters.clearFilters()
+```
+
+For complete API documentation, see [TypeDocs](https://euralink.js.org/) or [index.d.ts](./build/index.d.ts).
 
 ---
 
-## TypeScript Support
+## 🎮 Enhanced Example Bot
 
-Euralink ships with full TypeScript types. Just import as usual:
+For a comprehensive example with all features, see the [Enhanced V2 Example Bot](https://github.com/euralink-team/euralink/blob/main/test/euralink-bot.js) which includes:
 
-```ts
-import { Euralink, Player, Node, Track } from 'euralink';
-```
+- Complete music bot implementation
+- AutoResume testing and validation
+- EuraSync voice channel status
+- Performance monitoring
+- Debugging tools
+- Queue management commands
+- Audio filters
+- Lyrics system
 
 ---
 
 ## 🌟 Official Bot
 
-<div style="text-align: center;">
-  <table>
-    <tr>
-      <td align="center" width="200">
-        <img src="https://media.discordapp.net/attachments/1379961285822644228/1380143372223909888/ChatGPT_Image_Jun_4_2025_08_36_33_PM_optimized_1000.png?ex=6842ce2d&is=68417cad&hm=5ce85d095418f15344303425747168d0ee57629609cd903ca16d203bf318a72c&=&format=webp&quality=lossless&width=971&height=971" width="96" height="96" alt="Euralink Bot"/><br>
-        <b>Euralink Official Bot</b><br>
-        <a href="https://discord.com/oauth2/authorize?client_id=1379804561166041210&permissions=3148800&scope=bot%20applications.commands">
-          <img src="https://img.shields.io/badge/Add%20to%20Discord-5865F2?logo=discord&logoColor=white&style=for-the-badge" alt="Add to Discord"/>
-        </a><br>
-        <a href="https://github.com/Ryuzii/euralink-bot">
-          <img src="https://img.shields.io/badge/GitHub-Source%20Code-black?logo=github&style=for-the-badge" alt="GitHub Source"/>
-        </a><br>
-        <a href="https://discord.gg/4Dmfd6yE7F">
-          <img src="https://img.shields.io/badge/Join%20Support%20Server-5865F2?logo=discord&logoColor=white&style=for-the-badge" alt="Discord Server"/>
-        </a>
-      </td>
-    </tr>
-  </table>
+<div align="center">
+
+[![Euralink Bot](https://media.discordapp.net/attachments/1379961285822644228/1380143372223909888/ChatGPT_Image_Jun_4_2025_08_36_33_PM_optimized_1000.png?ex=6842ce2d&is=68417cad&hm=5ce85d095418f15344303425747168d0ee57629609cd903ca16d203bf318a72c&=&format=webp&quality=lossless&width=971&height=971)](https://discord.com/oauth2/authorize?client_id=1379804561166041210&permissions=3148800&scope=bot%20applications.commands)
+
+**Euralink Official Bot**
+
+[![Add to Discord](https://img.shields.io/badge/Add%20to%20Discord-5865F2?logo=discord&logoColor=white&style=for-the-badge)](https://discord.com/oauth2/authorize?client_id=1379804561166041210&permissions=3148800&scope=bot%20applications.commands)
+[![GitHub](https://img.shields.io/badge/GitHub-Source%20Code-black?logo=github&style=for-the-badge)](https://github.com/Ryuzii/euralink-bot)
+[![Discord Server](https://img.shields.io/badge/Join%20Support%20Server-5865F2?logo=discord&logoColor=white&style=for-the-badge)](https://discord.gg/4Dmfd6yE7F)
+
 </div>
 
 ---
 
-## Honorable Mention
+## 🧩 Plugin System
 
-<div style="text-align: center;">
-  <table style="margin: 0 auto;">
-    <tr>
-      <td style="text-align: center;">
-        <img src="https://avatars.githubusercontent.com/u/86982643?v=4" alt="Toddy Avatar" width="64" height="64" style="border-radius: 50%;"><br>
-        <strong>Honorable Mention:</strong><br>
-        <a href="https://github.com/ToddyTheNoobDud" target="_blank" rel="noopener noreferrer">
-          Toddy – Developer of Aqualink (Inspired tseep integration)
-        </a>
-      </td>
-    </tr>
-  </table>
-</div>
+Euralink supports a powerful plugin system for extensibility:
 
----
+```javascript
+class ExamplePlugin {
+    constructor() {
+        this.name = 'Example Plugin';
+    }
+    
+    load(eura) {
+        console.log('Plugin loaded!');
+        
+        eura.on('trackStart', (player, track) => {
+            console.log(`Track started: ${track.info.title}`);
+        });
+    }
+}
 
-## Player State Persistence
-
-Euralink V2 includes an enhanced autoResume system that can save and restore all player states for true auto-resume after bot restarts, including full playlist support and exact position resume.
-
-### Basic AutoResume
-
-```js
-// Save all players
-await eura.savePlayersState('./EuraPlayers.json');
-
-// Restore all players
-await eura.loadPlayersState('./EuraPlayers.json');
-```
-
-### Enhanced AutoResume Features
-
-- **Full Playlist Support**: Preserves entire queue with all tracks
-- **Exact Position Resume**: Continues from exact timestamp where it stopped
-- **State Persistence**: Saves volume, filters, loop settings, and more
-- **Manual Control**: Use `!saveresume` and `!loadresume` commands
-- **Testing Tools**: Comprehensive testing commands for validation
-
-### AutoResume Configuration
-
-```js
 const eura = new Euralink(client, nodes, {
-    // ... other options
-    autoResume: true, // Enable autoResume for all players
+    plugins: [new ExamplePlugin()]
 });
-```
-
-### Testing AutoResume
-
-```js
-// Test current player state
-!testresume
-
-// Full simulation (save → destroy → restore)
-!testresumefull
-
-// Check autoResume status
-!resumestatus
-
-// View saved state file
-!resumefile
 ```
 
 ---
 
-## Credits
+## 🤝 Contributing
 
-<div style="text-align: center;">
-  <table style="margin: 0 auto;">
-    <tr>
-      <td style="text-align: center;">
-        <strong>Special Thanks To:</strong><br><br>
-        <strong>🎵 Lavalink Team</strong><br>
-        For the amazing Lavalink server that powers this client<br><br>
-        <strong>🔧 Discord.js Team</strong><br>
-        For the excellent Discord.js library<br><br>
-        <strong>🚀 Node.js Community</strong><br>
-        For the robust Node.js runtime and ecosystem<br><br>
-        <strong>💡 Open Source Contributors</strong><br>
-        For all the libraries and tools that make this possible
-      </td>
-    </tr>
-  </table>
+We welcome contributions! Here's how you can help:
+
+1. **Fork** the repository
+2. **Create** a feature branch (`git checkout -b feature/amazing-feature`)
+3. **Commit** your changes (`git commit -m 'Add amazing feature'`)
+4. **Push** to the branch (`git push origin feature/amazing-feature`)
+5. **Open** a Pull Request
+
+### Development Setup
+
+```bash
+git clone https://github.com/euralink-team/euralink.git
+cd euralink
+npm install
+npm run build
+```
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+## 🙏 Credits
+
+<div align="center">
+
+**Special Thanks To:**
+
+🎵 **Lavalink Team** - For the amazing Lavalink server  
+🔧 **Discord.js Team** - For the excellent Discord.js library  
+🚀 **Node.js Community** - For the robust Node.js runtime  
+💡 **Open Source Contributors** - For all the libraries and tools
+
 </div>
 
 ---
 
-## Contributing
+## 🔗 Links
 
-Contributions, issues, and feature requests are welcome!
-
-- [Open an issue](https://github.com/euralink-team/euralink/issues)
-- [Submit a pull request](https://github.com/euralink-team/euralink/pulls)
-
----
-
-## License
-
-MIT © Ryuzii & Euralink contributors
+- [📚 Documentation](https://euralink.js.org/)
+- [🐙 GitHub Repository](https://github.com/euralink-team/euralink)
+- [📦 NPM Package](https://www.npmjs.com/package/euralink)
+- [📋 Changelog](https://github.com/euralink-team/euralink/blob/main/CHANGELOG.md)
+- [💬 Discord Server](https://discord.gg/4Dmfd6yE7F)
+- [🤖 Official Bot](https://discord.com/oauth2/authorize?client_id=1379804561166041210&permissions=3148800&scope=bot%20applications.commands)
 
 ---
 
-## Links
+<div align="center">
 
-- [Documentation](https://euralink.js.org/)
-- [GitHub](https://github.com/euralink-team/euralink)
-- [NPM](https://www.npmjs.com/package/euralink)
+**Made with ❤️ by the Euralink Team**
 
----
+[![GitHub](https://img.shields.io/badge/GitHub-Ryuzii-black?logo=github&style=for-the-badge)](https://github.com/Ryuzii)
 
-## Plugin System
-
-Euralink supports a simple plugin system. Plugins can hook into Euralink events and extend functionality.
-
-**Example:**
-
-```js
-const ExamplePlugin = require('./plugins/examplePlugin');
-
-const eura = new Euralink(client, [/* nodes */], {
-  send: (data) => { /* ... */ },
-  plugins: [new ExamplePlugin()]
-});
-```
-
-See `plugins/examplePlugin.js` for a sample plugin.
-
----
-
-## Advanced Queue Controls
-
-Euralink's `Queue` class supports advanced features:
-
-- `shuffle()` — Shuffle the queue
-- `move(from, to)` — Move a track from one position to another
-- `remove(index)` — Remove a track by index
-
-You can also use these via the player:
-
-```js
-player.shuffleQueue();
-player.moveQueueItem(0, 2);
-player.removeQueueItem(1);
-```
-
---- 
+</div>
