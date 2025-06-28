@@ -539,7 +539,7 @@ filters.setLowPass(enabled, options)
 filters.clearFilters()
 ```
 
-For complete API documentation, see [TypeDocs](https://euralink.js.org/) or [index.d.ts](./build/index.d.ts).
+For complete API documentation, see [TypeDocs](https://euralink-website.vercel.app/) or [index.d.ts](./build/index.d.ts).
 
 ---
 
@@ -562,7 +562,7 @@ For a comprehensive example with all features, see the [Enhanced V2 Example Bot]
 
 <div align="center">
 
-[![Euralink Bot](https://media.discordapp.net/attachments/1379961285822644228/1380143372223909888/ChatGPT_Image_Jun_4_2025_08_36_33_PM_optimized_1000.png?ex=6842ce2d&is=68417cad&hm=5ce85d095418f15344303425747168d0ee57629609cd903ca16d203bf318a72c&=&format=webp&quality=lossless&width=971&height=971)](https://discord.com/oauth2/authorize?client_id=1379804561166041210&permissions=3148800&scope=bot%20applications.commands)
+[![Euralink Bot](https://media.discordapp.net/attachments/1379961285822644228/1380143372223909888/ChatGPT_Image_Jun_4_2025_08_36_33_PM_optimized_1000.png?ex=6842ce2d&is=68417cad&hm=5ce85d095418f15344303425747168d0ee57629609cd903ca16d203bf318a72c&=&format=webp&quality=lossless&width=120&height=120)](https://discord.com/oauth2/authorize?client_id=1379804561166041210&permissions=3148800&scope=bot%20applications.commands)
 
 **Euralink Official Bot**
 
