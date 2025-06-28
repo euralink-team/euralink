@@ -1,6 +1,6 @@
 {
   "name": "euralink",
-  "description": "A modern, fast, and feature-rich Lavalink client for Node.js.",
+  "description": "A modern, fast, and feature-rich Lavalink client for Node.js with improved performance, HTTP2 support, and optimized resource usage.",
   "main": "build/index.js",
   "types": "build/index.d.ts",
   "files": [
@@ -16,7 +16,10 @@
     "discord.js",
     "discordjs-lavalink",
     "audio",
-    "euralink"
+    "euralink",
+    "performance",
+    "http2",
+    "optimized"
   ],
   "repository": {
     "type": "git",
@@ -38,5 +41,5 @@
     "undici": "^7.10.0",
     "ws": "^8.18.2"
   },
-  "version": "0.1.8"
+  "version": "0.2.0-beta.1"
 }

@@ -1,5 +1,6 @@
 const { fetch: undiciFetch, Response } = require("undici");
-const nodeUtil = require("node:util")
+const { Agent } = require("undici");
+const nodeUtil = require("node:util");
 
 class Rest {
   constructor(eura, options) {
@@ -7,98 +8,159 @@ class Rest {
     this.url = `http${options.secure ? "s" : ""}://${options.host}:${
       options.port
     }`;
+    console.log('[Rest.js] Creating Agent with origin:', this.url);
     this.sessionId = options.sessionId;
     this.password = options.password;
     this.version = options.restVersion;
+    
+    // Create persistent agent for better performance
+    try {
+      this.agent = new Agent({
+        pipelining: 1, // Enable pipelining for faster requests
+        connections: 100, // Increase connection pool
+        tls: {
+          rejectUnauthorized: false // Allow self-signed certificates
+        },
+        connect: {
+          timeout: 10000 // Faster timeout
+        },
+        // Performance optimizations
+        keepAliveTimeout: 60000, // Keep connections alive longer
+        keepAliveMaxTimeout: 300000, // Maximum keep-alive time
+        // HTTP/2 optimizations
+        allowH2: true, // Enable HTTP/2
+        maxConcurrentStreams: 100, // More concurrent streams
+        // Buffer optimizations
+        bodyTimeout: 30000, // Body timeout
+        headersTimeout: 10000, // Headers timeout
+      });
+    } catch (error) {
+      this.eura.emit("debug", `Failed to create agent: ${error.message}, falling back to default`);
+      this.agent = null; // Fallback to default fetch
+    }
+
+    // Request batching for better performance
+    this.pendingRequests = new Map();
+    this.batchTimeout = null;
+    this.batchDelay = 10; // ms
+    
+    // Cache for frequently accessed data
+    this.cache = new Map();
+    this.cacheTimeout = 30000; // 30 seconds
+    
+    // Smart cache for track searches
+    this.trackCache = new Map();
+    this.trackCacheTimeout = 300000; // 5 minutes for track searches
+    
+    // Cache for node info
+    this.nodeInfoCache = new Map();
+    this.nodeInfoCacheTimeout = 60000; // 1 minute for node info
   }
 
   setSessionId(sessionId) {
     this.sessionId = sessionId;
   }
 
-  async makeRequest(method, endpoint, body = null, includeHeaders = false) {
-    const headers = {
-      "Content-Type": "application/json",
-      Authorization: this.password,
-    };
-
-    const requestOptions = {
-      method,
-      headers,
-      body: body ? JSON.stringify(body) : null,
-    };
+  // Batch requests for better performance
+  async batchRequest(method, endpoint, body = null, includeHeaders = false) {
+    const key = `${method}:${endpoint}:${JSON.stringify(body)}`;
     
-    const response = await undiciFetch(this.url + endpoint, requestOptions).catch((e) => {
-      
-      throw new Error(`There was an Error while Making Node Request(likely caused by Network Issue): ${method} ${this.url}${endpoint}`, { cause: e });
-    })
+    if (this.pendingRequests.has(key)) {
+      return this.pendingRequests.get(key);
+    }
 
+    const promise = this.makeRequest(method, endpoint, body, includeHeaders);
+    this.pendingRequests.set(key, promise);
+    
+    // Clean up after request completes
+    promise.finally(() => {
+      this.pendingRequests.delete(key);
+    });
 
-    // Parses The Request
-    const data = await this.parseResponse(response);
-
-    // Emit apiResponse event with important data and Response
-    this.eura.emit("apiResponse", endpoint, response);
-
-    this.eura.emit(
-      "debug",
-      `[Rest] ${requestOptions.method} ${
-        endpoint.startsWith("/") ? endpoint : `/${endpoint}`
-      } ${body ? `body: ${JSON.stringify(body)}` : ""} -> \n Status Code: ${
-        response.status
-      }(${response.statusText}) \n Response(body): ${JSON.stringify(await data)} \n Headers: ${
-        nodeUtil.inspect(response.headers)
-      }`
-    );
-
-    return includeHeaders === true ? {
-      data,
-      headers: response.headers,
-    } : data;
+    return promise;
   }
 
-  async getPlayers() {
-    return this.makeRequest(
-      "GET",
-      `/${this.version}/sessions/${this.sessionId}/players`
-    );
+  async makeRequest(method, endpoint, body = null, includeHeaders = false) {
+    const startTime = Date.now();
+    try {
+      const headers = {
+        'Authorization': this.password,
+        'Content-Type': 'application/json',
+        'User-Agent': `Euralink/${this.version}`
+      };
+      const requestOptions = {
+        method,
+        headers,
+        body: body ? JSON.stringify(body) : undefined
+      };
+      if (this.agent) requestOptions.dispatcher = this.agent;
+      const response = await undiciFetch(this.url + endpoint, requestOptions);
+      const responseTime = Date.now() - startTime;
+      this.eura.emit(
+        "debug",
+        `[Rest] ${method} ${endpoint.startsWith("/") ? endpoint : `/${endpoint}`} ${body ? `body: ${JSON.stringify(body)}` : ""} -> Status: ${response.status} (${responseTime}ms)`
+      );
+      
+      // Handle non-200 responses
+      if (!response.ok) {
+        const errorText = await response.text();
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch {
+          errorData = { message: errorText };
+        }
+        
+        this.eura.emit("debug", `[Rest Error] ${method} ${endpoint} failed: ${response.status} - ${errorData.message || 'Unknown error'}`);
+        throw new Error(`HTTP ${response.status}: ${errorData.message || 'Request failed'}`);
+      }
+      
+      // Parse response once
+      const data = await this.parseResponse(response);
+      // Cache successful GET requests
+      if (method === 'GET' && response.ok) {
+        const cacheKey = `${method}:${endpoint}`;
+        this.cache.set(cacheKey, {
+          data,
+          timestamp: Date.now()
+        });
+      }
+      return includeHeaders === true ? {
+        data,
+        headers: response.headers,
+        responseTime
+      } : data;
+    } catch (error) {
+      this.eura.emit("debug", `Request failed: ${error.message}`);
+      throw error;
+    }
+  }
+
+  async parseResponse(response) {
+    try {
+      if (response.status === 204) {
+        return null;
+      }
+
+      const contentType = response.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
+        return await response.json();
+      } else {
+        return await response.text();
+      }
+    } catch (error) {
+      this.eura.emit("debug", `[Rest - Error] Parse error: ${error.message}`);
+      return null;
+    }
   }
 
   async updatePlayer(options) {
-    // destructure data as requestBody for ease of use.
-    let { data: requestBody } = options;
-
-    if (
-      (typeof requestBody.track !== "undefined" &&
-        requestBody.track.encoded &&
-        requestBody.track.identifier) ||
-      (requestBody.encodedTrack && requestBody.identifier)
-    )
-      throw new Error(
-        `${
-          typeof requestBody.track !== "undefined"
-            ? `encoded And identifier`
-            : `encodedTrack And identifier`
-        } are mutually exclusive (Can't be provided together) in Update Player Endpoint`
-      );
-
-    if (this.version === "v3" && options.data?.track) {
-      const { track, ...otherRequestData } = requestBody;
-
-      requestBody = { ...otherRequestData };
-
-      Object.assign(
-        options.data,
-        typeof options.data.track.encoded !== "undefined"
-          ? { encodedTrack: track.encoded }
-          : { identifier: track.identifier }
-      );
-    }
-
+    const { guildId, data } = options;
+    
     return this.makeRequest(
       "PATCH",
-      `/${this.version}/sessions/${this.sessionId}/players/${options.guildId}?noReplace=false`,
-      options.data
+      `/${this.version}/sessions/${this.sessionId}/players/${guildId}`,
+      data
     );
   }
 
@@ -109,26 +171,48 @@ class Rest {
     );
   }
 
-  async getTracks(identifier) {
+  async getPlayers() {
     return this.makeRequest(
       "GET",
-      `/${this.version}/loadtracks?identifier=${encodeURIComponent(identifier)}`
+      `/${this.version}/sessions/${this.sessionId}/players`
     );
   }
 
-  async decodeTrack(track, node) {
-    if (!node) node = this.leastUsedNodes[0];
+  async getTracks(identifier) {
+    // Check cache first
+    const cacheKey = `tracks:${identifier}`;
+    const cached = this.trackCache.get(cacheKey);
+    if (cached && (Date.now() - cached.timestamp) < this.trackCacheTimeout) {
+      this.eura.emit("debug", `[Rest Cache] Track cache hit for ${identifier}`);
+      return cached.data;
+    }
+    
+    const result = await this.makeRequest(
+      "GET",
+      `/${this.version}/loadtracks?identifier=${encodeURIComponent(identifier)}`
+    );
+    
+    // Cache the result
+    this.trackCache.set(cacheKey, {
+      data: result,
+      timestamp: Date.now()
+    });
+    
+    return result;
+  }
+
+  async decodeTrack(track) {
     return this.makeRequest(
-      `GET`,
+      "GET",
       `/${this.version}/decodetrack?encodedTrack=${encodeURIComponent(track)}`
     );
   }
 
   async decodeTracks(tracks) {
     return this.makeRequest(
-      `POST`,
+      "POST",
       `/${this.version}/decodetracks`,
-      tracks
+      { tracks }
     );
   }
 
@@ -139,43 +223,6 @@ class Rest {
   async getInfo() {
     return this.makeRequest("GET", `/${this.version}/info`);
   }
-
-  async getRoutePlannerStatus() {
-    return this.makeRequest(
-      `GET`,
-      `/${this.version}/routeplanner/status`
-    );
-  }
-  async getRoutePlannerAddress(address) {
-    return this.makeRequest(
-      `POST`,
-      `/${this.version}/routeplanner/free/address`,
-      { address }
-    );
-  }
-
-  /**
-   * @description Parses The Process Request and Performs necessary Checks(if statements)
-   * @param {Response} req
-   * @returns {object | null}
-   */
-  async parseResponse(req) {
-    if (req.status === 204) {
-      return null;
-    }
-
-    try {
-      return await req[req.headers.get("Content-Type").includes("text/plain") ? "text" : "json"]();
-    } catch (e) {
-      this.eura.emit(
-        "debug",
-        `[Rest - Error] There was an Error for ${
-          new URL(req.url).pathname
-        } ${e}`
-      );
-      return null;
-    }
-  }
 }
 
-module.exports = { Rest }; 
+module.exports = Rest;

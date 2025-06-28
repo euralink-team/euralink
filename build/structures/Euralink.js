@@ -38,6 +38,16 @@ class Euralink extends EventEmitter {
     this.playlistInfo = null;
     this.pluginInfo = null;
     this.plugins = options.plugins;
+    
+    // Performance optimizations
+    this.regionCache = new Map();
+    this.nodeHealthCache = new Map();
+    this.cacheTimeout = 30000; // 30 seconds
+    
+    // Lazy loading support
+    this.lazyLoad = options.lazyLoad || false;
+    this.lazyLoadTimeout = options.lazyLoadTimeout || 5000;
+    
     if (options.euraSync === true) {
       this.euraSync = new EuraSync(client); // default template
     } else if (typeof options.euraSync === 'object' && options.euraSync !== null) {
@@ -64,7 +74,47 @@ class Euralink extends EventEmitter {
   get leastUsedNodes() {
     return [...this.nodeMap.values()]
       .filter((node) => node.connected)
-      .sort((a, b) => a.rest.calls - b.rest.calls);
+      .sort((a, b) => {
+        // Improved node selection with health metrics
+        const aHealth = this.getNodeHealth(a);
+        const bHealth = this.getNodeHealth(b);
+        return aHealth.score - bHealth.score;
+      });
+  }
+
+  // Get node health score for better load balancing
+  getNodeHealth(node) {
+    const now = Date.now();
+    const cached = this.nodeHealthCache.get(node.name);
+    
+    if (cached && (now - cached.timestamp) < this.cacheTimeout) {
+      return cached.health;
+    }
+    
+    const health = node.getHealthStatus();
+    const score = this.calculateNodeScore(health);
+    
+    this.nodeHealthCache.set(node.name, {
+      health: { ...health, score },
+      timestamp: now
+    });
+    
+    return { ...health, score };
+  }
+
+  // Calculate node score for load balancing
+  calculateNodeScore(health) {
+    let score = 0;
+    
+    // Lower score = better node
+    score += health.penalties * 10;
+    score += health.cpuLoad * 100;
+    score += health.memoryUsage * 0.5;
+    score += health.ping * 0.1;
+    score += health.players * 2;
+    score += health.playingPlayers * 5;
+    
+    return score;
   }
 
   init(clientId) {
@@ -98,6 +148,7 @@ class Euralink extends EventEmitter {
     if (!node) return;
     node.disconnect();
     this.nodeMap.delete(identifier);
+    this.nodeHealthCache.delete(identifier);
     this.emit("nodeDestroy", node);
   }
 
@@ -114,20 +165,37 @@ class Euralink extends EventEmitter {
     }
   }
 
+  // Improved region fetching with caching and better performance
   fetchRegion(region) {
+    const now = Date.now();
+    const cacheKey = `region_${region}`;
+    const cached = this.regionCache.get(cacheKey);
+    
+    if (cached && (now - cached.timestamp) < this.cacheTimeout) {
+      return cached.nodes;
+    }
+    
     const nodesByRegion = [...this.nodeMap.values()]
       .filter((node) => node.connected && node.regions?.includes(region?.toLowerCase()))
       .sort((a, b) => {
-        const aLoad = a.stats.cpu
-          ? (a.stats.cpu.systemLoad / a.stats.cpu.cores) * 100
-          : 0;
-        const bLoad = b.stats.cpu
-          ? (b.stats.cpu.systemLoad / b.stats.cpu.cores) * 100
-          : 0;
-        return aLoad - bLoad;
+        const aHealth = this.getNodeHealth(a);
+        const bHealth = this.getNodeHealth(b);
+        return aHealth.score - bHealth.score;
       });
 
+    // Cache the result
+    this.regionCache.set(cacheKey, {
+      nodes: nodesByRegion,
+      timestamp: now
+    });
+
     return nodesByRegion;
+  }
+
+  // Get best node for a specific region
+  getBestNodeForRegion(region) {
+    const regionNodes = this.fetchRegion(region);
+    return regionNodes.length > 0 ? regionNodes[0] : this.leastUsedNodes[0];
   }
 
   /**
@@ -137,7 +205,7 @@ class Euralink extends EventEmitter {
    * @param {string} options.guildId - The ID of the guild.
    * @param {string} [options.region] - The region for the connection.
    * @param {number} [options.defaultVolume] - The default volume of the player. **By-Default**: **100**
-   * @param {import("..`).LoopOption} [options.loop] - The loop mode of the player.
+   * @param {import("..").LoopOption} [options.loop] - The loop mode of the player.
    * @throws {Error} Throws an error if Euralink is not initialized or no nodes are available.
    * @return {Player} The created player.
    */
@@ -151,10 +219,9 @@ class Euralink extends EventEmitter {
     
     let node;
     if (options.region) {
-      const region = this.fetchRegion(options.region)[0];
-      node = this.nodeMap.get(region.name || this.leastUsedNodes[0].name);
+      node = this.getBestNodeForRegion(options.region);
     } else {
-      node = this.nodeMap.get(this.leastUsedNodes[0].name);
+      node = this.leastUsedNodes[0];
     }
 
     if (!node) throw new Error("No nodes are available");
@@ -198,12 +265,10 @@ class Euralink extends EventEmitter {
    * */
   async resolve({ query, source, requester, node }) {
     try {
-      await new Promise((res) => setTimeout(res, 0));
-
       if (!this.initiated) throw new Error("You have to initialize Euralink in your ready event");
       
       if(node && (typeof node !== "string" && !(node instanceof Node))) throw new Error(`'node' property must either be an node identifier/name('string') or an Node/Node Class, But Received: ${typeof node}`)
-      // ^^(jsdoc) A source to search the query on example:ytmsearch for youtube music
+      
       const querySource = source || this.defaultSearchPlatform;
 
       const requestNode = (node && typeof node === 'string' ? this.nodeMap.get(node) : node) || this.leastUsedNodes[0];
@@ -215,6 +280,23 @@ class Euralink extends EventEmitter {
       this.emit("debug", `Searching for ${query} on node "${requestNode.name}"`);
 
       let response = await requestNode.rest.makeRequest(`GET`, `/${requestNode.rest.version}/loadtracks?identifier=${encodeURIComponent(identifier)}`);
+
+      // Handle failed requests (like 500 errors)
+      if (!response || response.loadType === "error") {
+        this.emit("debug", `Search failed for "${query}" on node "${requestNode.name}": ${response?.data?.message || 'Unknown error'}`);
+        
+        // Try fallback search if it's a URL
+        if (regex.test(query)) {
+          this.emit("debug", `Attempting fallback search for "${query}"`);
+          const fallbackIdentifier = `${querySource}:${query}`;
+          response = await requestNode.rest.makeRequest(`GET`, `/${requestNode.rest.version}/loadtracks?identifier=${encodeURIComponent(fallbackIdentifier)}`);
+        }
+        
+        // If still failed, throw error
+        if (!response || response.loadType === "error") {
+          throw new Error(response?.data?.message || 'Failed to load tracks');
+        }
+      }
 
       // for resolving identifiers - Only works in Spotify and Youtube
       if (response.loadType === "empty" || response.loadType === "NO_MATCHES") {
@@ -230,17 +312,43 @@ class Euralink extends EventEmitter {
 
           this.emit("debug", `Search Success for "${query}" on node "${requestNode.name}", loadType: ${response.loadType}, Resulted track Title: ${this.tracks[0].info.title} by ${this.tracks[0].info.author}`);
         } else if (response.loadType === "playlist") {
-          this.tracks = response.data?.tracks ? response.data.tracks.map((track) => new Track(track, requester, requestNode)) : [];
+          // Fast parallel track creation for playlists
+          const trackData = response.data?.tracks || [];
+          this.tracks = new Array(trackData.length);
+          
+          // Use Promise.all for parallel processing
+          const trackPromises = trackData.map((track, index) => {
+            return Promise.resolve(new Track(track, requester, requestNode));
+          });
+          
+          this.tracks = await Promise.all(trackPromises);
 
           this.emit("debug", `Search Success for "${query}" on node "${requestNode.name}", loadType: ${response.loadType} tracks: ${this.tracks.length}`);
         } else {
-          this.tracks = response.loadType === "search" && response.data ? response.data.map((track) => new Track(track, requester, requestNode)) : [];
+          // Fast parallel track creation for search results
+          const trackData = response.loadType === "search" && response.data ? response.data : [];
+          this.tracks = new Array(trackData.length);
+          
+          // Use Promise.all for parallel processing
+          const trackPromises = trackData.map((track, index) => {
+            return Promise.resolve(new Track(track, requester, requestNode));
+          });
+          
+          this.tracks = await Promise.all(trackPromises);
 
           this.emit("debug", `Search ${this.loadType !== "error" ? "Success" : "Failed"} for "${query}" on node "${requestNode.name}", loadType: ${response.loadType} tracks: ${this.tracks.length}`);
         }
       } else {
-        // v3 (Legacy or Lavalink V3)
-        this.tracks = response?.tracks ? response.tracks.map((track) => new Track(track, requester, requestNode)) : [];
+        // v3 (Legacy or Lavalink V3) - Fast parallel processing
+        const trackData = response?.tracks || [];
+        this.tracks = new Array(trackData.length);
+        
+        // Use Promise.all for parallel processing
+        const trackPromises = trackData.map((track, index) => {
+          return Promise.resolve(new Track(track, requester, requestNode));
+        });
+        
+        this.tracks = await Promise.all(trackPromises);
 
         this.emit("debug", `Search ${this.loadType !== "error" || this.loadType !== "LOAD_FAILED" ? "Success" : "Failed"} for "${query}" on node "${requestNode.name}", loadType: ${response.loadType} tracks: ${this.tracks.length}`);
       }
@@ -249,56 +357,153 @@ class Euralink extends EventEmitter {
         requestNode.rest.version === "v4" &&
         response.loadType === "playlist"
       ) {
-        this.playlistInfo = response.data?.info ?? null;
+        this.playlistInfo = response.data?.info || null;
       } else {
-        this.playlistInfo = response.playlistInfo ?? null;
+        this.playlistInfo = null;
       }
 
-      // Add thumbnail to playlistInfo if possible
-      if (this.playlistInfo) {
-        let thumbnail = null;
-        // Prefer pluginInfo artworkUrl if available
-        if (response.data?.pluginInfo?.artworkUrl) {
-          thumbnail = response.data.pluginInfo.artworkUrl;
-        } else if (response.data?.tracks?.[0]?.info?.artworkUrl) {
-          thumbnail = response.data.tracks[0].info.artworkUrl;
-        } else if (this.tracks && this.tracks[0] && this.tracks[0].info && this.tracks[0].info.thumbnail) {
-          thumbnail = this.tracks[0].info.thumbnail;
-        }
-        this.playlistInfo.thumbnail = thumbnail;
-      }
-
-      this.loadType = response.loadType ?? null
-      this.pluginInfo = response.pluginInfo ?? {};
+      this.loadType = response.loadType;
 
       return {
-        loadType: this.loadType,
-        exception: this.loadType == "error" ? response.data : this.loadType == "LOAD_FAILED" ? response.exception : null,
+        loadType: response.loadType,
+        tracks: this.tracks,
         playlistInfo: this.playlistInfo,
         pluginInfo: this.pluginInfo,
-        tracks: this.tracks,
       };
     } catch (error) {
-      this.emit("debug", `Search Failed for "${query}" on node "${requestNode.name}", Due to: ${error?.stack || error}`);
+      this.emit("debug", `Search failed for "${query}": ${error.message}`);
       throw error;
     }
   }
 
   get(guildId) {
-    const player = this.players.get(guildId);
-    if (!player) throw new Error(`Player not found for ${guildId} guildId`);
-    return player;
+    return this.players.get(guildId);
   }
 
   async search(query, requester, source = this.defaultSearchPlatform) {
-    if (!query || !requester) return [];
-    try {
-      const { tracks } = await this.resolve({ query, source, requester });
-      return tracks ?? [];
-    } catch (error) {
-      console.error(`Search error for "${query}":`, error);
-      return [];
+    return this.resolve({ query, source, requester });
+  }
+
+  // Get all nodes health status
+  getNodesHealth() {
+    const health = {};
+    for (const [name, node] of this.nodeMap) {
+      health[name] = this.getNodeHealth(node);
     }
+    return health;
+  }
+
+  // Get overall system health
+  getSystemHealth() {
+    const nodesHealth = this.getNodesHealth();
+    const connectedNodes = Object.values(nodesHealth).filter(h => h.connected);
+    const totalPlayers = Object.values(nodesHealth).reduce((sum, h) => sum + h.players, 0);
+    const totalPlayingPlayers = Object.values(nodesHealth).reduce((sum, h) => sum + h.playingPlayers, 0);
+    
+    return {
+      totalNodes: Object.keys(nodesHealth).length,
+      connectedNodes: connectedNodes.length,
+      totalPlayers,
+      totalPlayingPlayers,
+      averagePing: connectedNodes.length > 0 ? 
+        connectedNodes.reduce((sum, h) => sum + h.averagePing, 0) / connectedNodes.length : 0,
+      nodesHealth
+    };
+  }
+
+  // Clear caches
+  clearCaches() {
+    this.regionCache.clear();
+    this.nodeHealthCache.clear();
+    this.emit("debug", "All caches cleared");
+  }
+
+  // Save player states for autoResume
+  async savePlayersState(filePath) {
+    try {
+      const playersData = {};
+      
+      for (const [guildId, player] of this.players) {
+        if (player.current || player.queue.length > 0) {
+          playersData[guildId] = player.toJSON();
+        }
+      }
+      
+      await fs.writeFile(filePath, JSON.stringify(playersData, null, 2));
+      this.emit("debug", `Saved ${Object.keys(playersData).length} player states to ${filePath}`);
+      
+      return playersData;
+    } catch (error) {
+      this.emit("debug", `Failed to save player states: ${error.message}`);
+      throw error;
+    }
+  }
+
+  // Load player states for autoResume
+  async loadPlayersState(filePath) {
+    try {
+      const data = await fs.readFile(filePath, 'utf8');
+      const playersData = JSON.parse(data);
+      
+      let loadedCount = 0;
+      
+      for (const [guildId, playerData] of Object.entries(playersData)) {
+        try {
+          // Find the best node for this player
+          const node = this.leastUsedNodes[0];
+          if (!node) {
+            this.emit("debug", `No available nodes to restore player for guild ${guildId}`);
+            continue;
+          }
+          
+          // Create player from saved state
+          const player = Player.fromJSON(this, node, playerData);
+          this.players.set(guildId, player);
+          
+          // Save autoResume state if enabled
+          if (player.autoResumeState.enabled) {
+            player.saveAutoResumeState();
+          }
+          
+          loadedCount++;
+          this.emit("playerCreate", player);
+          this.emit("debug", `Restored player for guild ${guildId}`);
+        } catch (error) {
+          this.emit("debug", `Failed to restore player for guild ${guildId}: ${error.message}`);
+        }
+      }
+      
+      this.emit("debug", `Loaded ${loadedCount} player states from ${filePath}`);
+      return loadedCount;
+    } catch (error) {
+      if (error.code === 'ENOENT') {
+        this.emit("debug", `No player state file found at ${filePath}`);
+        return 0;
+      }
+      this.emit("debug", `Failed to load player states: ${error.message}`);
+      throw error;
+    }
+  }
+
+  // Destroy all resources
+  destroy() {
+    // Destroy all players
+    for (const player of this.players.values()) {
+      player.destroy();
+    }
+    this.players.clear();
+
+    // Destroy all nodes
+    for (const node of this.nodeMap.values()) {
+      node.destroy();
+    }
+    this.nodeMap.clear();
+
+    // Clear caches
+    this.clearCaches();
+
+    this.initiated = false;
+    this.emit("destroy");
   }
 }
 

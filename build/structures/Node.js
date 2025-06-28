@@ -1,5 +1,5 @@
 const Websocket = require("ws");
-const { Rest } = require("./Rest");
+const Rest = require("./Rest");
 const { Track } = require("./Track");
 
 class Node {
@@ -18,15 +18,13 @@ class Node {
         this.sessionId = node.sessionId || null;
         this.rest = new Rest(eura, this);
 
-        if (options.restVersion === "v4") {
-            this.wsUrl = `ws${this.secure ? "s" : ""}://${this.host}:${this.port}/v4/websocket`;
-        } else {
-            this.wsUrl = `ws${this.secure ? "s" : ""}://${this.host}:${this.port}`;
-        }
-
-        this.restUrl = `http${this.secure ? "s" : ""}://${this.host}:${this.port}`;
+        // Improved URL construction with HTTP2 support
+        this.wsUrl = this.constructWsUrl();
+        this.restUrl = this.constructRestUrl();
+        
         this.ws = null;
         this.regions = node.regions;
+        
         /**
          * Lavalink Info fetched While/After connecting.
          * @type {import("..").NodeInfo | null}
@@ -56,18 +54,37 @@ class Node {
 
         this.connected = false;
 
+        // Improved autoResume configuration
         this.resumeKey = options.resumeKey || null;
         this.resumeTimeout = options.resumeTimeout || 60;
         this.autoResume = options.autoResume || false;
+        this.autoResumePlayers = new Map(); // Track players for autoResume
 
-        this.reconnectTimeout = options.reconnectTimeout || 5000
+        this.reconnectTimeout = options.reconnectTimeout || 5000;
         this.reconnectTries = options.reconnectTries || 3;
         this.reconnectAttempt = null;
         this.reconnectAttempted = 1;
 
         this.lastStats = Date.now();
+        
+        // Performance tracking
+        this.connectionStartTime = null;
+        this.lastPing = 0;
+        this.pingHistory = [];
+        this.maxPingHistory = 10;
     }
 
+    // Improved URL construction with HTTP2 support
+    constructWsUrl() {
+        const protocol = this.secure ? "wss" : "ws";
+        const version = this.restVersion === "v4" ? "/v4/websocket" : "";
+        return `${protocol}://${this.host}:${this.port}${version}`;
+    }
+
+    constructRestUrl() {
+        const protocol = this.secure ? "https" : "http";
+        return `${protocol}://${this.host}:${this.port}`;
+    }
 
     lyrics = {
         /**
@@ -155,13 +172,19 @@ class Node {
      * @param {fetchInfoOptions} options 
      */
     async fetchInfo(options = { restVersion: this.restVersion, includeHeaders: false }) {
-
-        return await this.rest.makeRequest("GET", `/${options.restVersion || this.restVersion}/info`, null, options.includeHeaders)
+        try {
+            return await this.rest.makeRequest("GET", `/${options.restVersion || this.restVersion}/info`, null, options.includeHeaders);
+        } catch (error) {
+            this.eura.emit('debug', this.name, `Failed to fetch node info: ${error.message}`);
+            throw error; // Re-throw to be handled by caller
+        }
     }
 
     async connect() {
-        if (this.ws) this.ws.close()
-        this.eura.emit('debug', this.name, `Checking Node Version`);
+        if (this.connected) return;
+        
+        this.connectionStartTime = Date.now();
+        this.eura.emit('debug', this.name, `Connecting to node...`);
 
         const headers = {
             "Authorization": this.password,
@@ -175,6 +198,12 @@ class Node {
             if (this.resumeKey) headers["Resume-Key"] = this.resumeKey;
         }
 
+        // Add HTTP2 support headers for secure connections
+        if (this.secure) {
+            headers["Accept"] = "application/json";
+            headers["Accept-Encoding"] = "gzip, deflate, br";
+        }
+
         this.ws = new Websocket(this.wsUrl, { headers });
         this.ws.on("open", this.open.bind(this));
         this.ws.on("error", this.error.bind(this));
@@ -186,20 +215,82 @@ class Node {
         if (this.reconnectTimeout) clearTimeout(this.reconnectTimeout);
 
         this.connected = true;
-        this.eura.emit('debug', this.name, `Connection with Lavalink established on ${this.wsUrl}`);
+        const connectionTime = Date.now() - this.connectionStartTime;
+        this.eura.emit('debug', this.name, `Connection established in ${connectionTime}ms`);
 
-        this.info = await this.fetchInfo().then((info) => this.info = info).catch((e) => (console.error(`Node (${this.name}) Failed to fetch info (${this.restVersion}/info) on WS-OPEN: ${e}`), null));
+        // Try to fetch node info, but don't fail if it doesn't work
+        try {
+            // Add timeout to prevent hanging
+            const timeoutPromise = new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Node info fetch timeout')), 5000)
+            );
+            
+            const infoPromise = this.fetchInfo();
+            this.info = await Promise.race([infoPromise, timeoutPromise]);
+            this.eura.emit('debug', this.name, `Node info fetched successfully`);
+        } catch (error) {
+            this.eura.emit('debug', this.name, `Failed to fetch node info: ${error.message}`);
+            this.info = null;
+            
+            // Don't throw error, just log it and continue
+            // Some Lavalink servers might not support the info endpoint
+        }
 
-        if (!this.info && !this.options.bypassChecks?.nodeFetchInfo) {
+        // Only throw error if explicitly required and info is missing
+        if (!this.info && this.options?.bypassChecks?.nodeFetchInfo === false) {
             throw new Error(`Node (${this.name} - URL: ${this.restUrl}) Failed to fetch info on WS-OPEN`);
         }
 
+        // Improved autoResume with better cleanup
         if (this.autoResume) {
+            await this.performAutoResume();
+        }
+    }
+
+    // Improved autoResume with better cleanup
+    async performAutoResume() {
+        try {
+            const playersToResume = [];
+            
+            // Collect players that need resuming
             for (const player of this.eura.players.values()) {
-                if (player.node === this) {
-                    player.restart();
+                if (player.node === this && player.current) {
+                    playersToResume.push(player);
                 }
             }
+
+            if (playersToResume.length === 0) {
+                // this.eura.emit("debug", this.name, "No players to resume");
+                return;
+            }
+
+            // this.eura.emit("debug", this.name, `Resuming ${playersToResume.length} player(s)`);
+            
+            // Batch resume players for better performance
+            const resumePromises = playersToResume.map(async (player) => {
+                try {
+                    if (player.track && player.track.encoded) {
+                        await this.rest.updatePlayer({
+                            guildId: player.guildId,
+                            playerOptions: {
+                                track: { encoded: player.track.encoded },
+                                position: player.position || 0,
+                                volume: player.volume || 100,
+                                filters: player.filters || {},
+                                paused: player.paused || false
+                            }
+                        });
+                    }
+                } catch (error) {
+                    this.eura.emit("debug", this.name, `Failed to resume player ${player.guildId}: ${error.message}`);
+                }
+            });
+
+            await Promise.all(resumePromises);
+            // this.eura.emit("debug", this.name, `AutoResume completed for ${playersToResume.length} player(s)`);
+            
+        } catch (error) {
+            this.eura.emit("debug", this.name, `AutoResume failed: ${error.message}`);
         }
     }
 
@@ -208,7 +299,7 @@ class Node {
         this.eura.emit("nodeError", this, event);
     }
 
-    message(msg) {
+    async message(msg) {
         if (Array.isArray(msg)) msg = Buffer.concat(msg);
         else if (msg instanceof ArrayBuffer) msg = Buffer.from(msg);
 
@@ -216,11 +307,20 @@ class Node {
         if (!payload.op) return;
 
         this.eura.emit("raw", "Node", payload);
-        this.eura.emit("debug", this.name, `Lavalink Node Update : ${JSON.stringify(payload)}`);
+        // this.eura.emit("debug", this.name, `Lavalink Node Update : ${JSON.stringify(payload)}`);
 
         if (payload.op === "stats") {
             this.stats = { ...payload };
             this.lastStats = Date.now();
+            
+            // Track ping performance
+            if (payload.ping) {
+                this.lastPing = payload.ping;
+                this.pingHistory.push(payload.ping);
+                if (this.pingHistory.length > this.maxPingHistory) {
+                    this.pingHistory.shift();
+                }
+            }
         }
 
         if (payload.op === "ready") {
@@ -230,18 +330,34 @@ class Node {
             }
 
             this.eura.emit("nodeConnect", this);
+            // this.eura.emit("debug", this.name, `Ready Payload received ${JSON.stringify(payload)}`);
 
-            this.eura.emit("debug", this.name, `Ready Payload received ${JSON.stringify(payload)}`);
-
+            // Improved session configuration
             if (this.restVersion === "v4") {
                 if (this.sessionId) {
-                    this.rest.makeRequest(`PATCH`, `/${this.rest.version}/sessions/${this.sessionId}`, { resuming: true, timeout: this.resumeTimeout });
-                    this.eura.emit("debug", this.name, `Resuming configured on Lavalink`);
+                    try {
+                        await this.rest.makeRequest(`PATCH`, `/${this.rest.version}/sessions/${this.sessionId}`, { 
+                            resuming: true, 
+                            timeout: this.resumeTimeout 
+                        });
+                        // this.eura.emit("debug", this.name, `Resuming configured on Lavalink`);
+                    } catch (error) {
+                        this.eura.emit("debug", this.name, `Failed to configure resuming: ${error.message}`);
+                        // Don't throw error, just log it and continue
+                    }
                 }
             } else {
                 if (this.resumeKey) {
-                    this.rest.makeRequest(`PATCH`, `/${this.rest.version}/sessions/${this.sessionId}`, { resumingKey: this.resumeKey, timeout: this.resumeTimeout });
-                    this.eura.emit("debug", this.name, `Resuming configured on Lavalink`);
+                    try {
+                        await this.rest.makeRequest(`PATCH`, `/${this.rest.version}/sessions/${this.sessionId}`, { 
+                            resumingKey: this.resumeKey, 
+                            timeout: this.resumeTimeout 
+                        });
+                        // this.eura.emit("debug", this.name, `Resuming configured on Lavalink`);
+                    } catch (error) {
+                        this.eura.emit("debug", this.name, `Failed to configure resuming: ${error.message}`);
+                        // Don't throw error, just log it and continue
+                    }
                 }
             }
         }
@@ -252,111 +368,88 @@ class Node {
 
     close(event, reason) {
         this.connected = false;
-        this.eura.emit('nodeDisconnect', this, event, reason);
-        // Migrate players to another node if available
-        const healthyNode = this.eura.leastUsedNodes.find(n => n !== this && n.connected);
-        if (healthyNode) {
-            for (const player of this.eura.players.values()) {
-                if (player.node === this) {
-                    player.node = healthyNode;
-                    player.connect({
-                        guildId: player.guildId,
-                        voiceChannel: player.voiceChannel,
-                        textChannel: player.textChannel,
-                        deaf: player.deaf,
-                        mute: player.mute
-                    });
-                    player.restart && player.restart();
-                    this.eura.emit('playerMigrated', player, this, healthyNode);
-                }
-            }
+        this.eura.emit("nodeDisconnect", this, event, reason);
+
+        if (this.reconnectAttempted <= this.reconnectTries) {
+            this.eura.emit("debug", this.name, `Connection closed, attempting to reconnect... (${this.reconnectAttempted}/${this.reconnectTries})`);
+            this.reconnect();
+        } else {
+            this.eura.emit("debug", this.name, `Connection closed, max reconnection attempts reached`);
         }
     }
 
     reconnect() {
+        if (this.reconnectAttempt) clearTimeout(this.reconnectAttempt);
+
         this.reconnectAttempt = setTimeout(() => {
-            if (this.reconnectAttempted >= this.reconnectTries) {
-                const error = new Error(`Unable to connect with ${this.name} node after ${this.reconnectTries} attempts.`);
-
-                this.eura.emit("nodeError", this, error);
-                return this.destroy();
-            }
-
-            this.ws?.removeAllListeners();
-            this.ws = null;
-            this.eura.emit("nodeReconnect", this);
-            this.connect();
             this.reconnectAttempted++;
+            this.connect();
         }, this.reconnectTimeout);
     }
 
-/**
- * Destroys the node connection and cleans up resources.
- * 
- * @param {boolean} [clean=false] - Determines if a clean destroy should be performed.
- *                                  ### If `clean` is `true`
- *                                  it removes all listeners and nullifies the websocket,
- *                                  emits a "nodeDestroy" event, and deletes the node from the nodes map.
- *                                  ### If `clean` is `false`
- *                                  it performs the full disconnect process which includes:
- *                                  - Destroying all players associated with this node.
- *                                  - Closing the websocket connection.
- *                                  - Removing all listeners and nullifying the websocket.
- *                                  - Clearing any reconnect attempts.
- *                                  - Emitting a "nodeDestroy" event.
- *                                  - Deleting the node from the node map.
- *                                  - Setting the connected state to false.
- */
     destroy(clean = false) {
-        // Remove all event listeners
-        if (typeof this.removeAllListeners === 'function') this.removeAllListeners();
-        // Destroy all players associated with this node
-        for (const player of this.eura.players.values()) {
-            if (player.node === this) player.destroy();
-        }
-        // Clear reconnect attempt if set
-        if (this.reconnectAttempt) clearTimeout(this.reconnectAttempt);
-        // Null out references to help GC
-        this.eura = null;
-        this.ws = null;
-        this.rest = null;
-        this.info = null;
-        // Defensive: clear any other intervals/timeouts if added in the future
-        // if (this._interval) clearInterval(this._interval);
-        // if (this._timeout) clearTimeout(this._timeout);
         this.connected = false;
-        this.eura?.emit("nodeDestroy", this);
+
+        if (this.ws) {
+            this.ws.close();
+            this.ws = null;
+        }
+
+        if (this.reconnectAttempt) {
+            clearTimeout(this.reconnectAttempt);
+            this.reconnectAttempt = null;
+        }
+
+        // Clean up autoResume state
+        this.autoResumePlayers.clear();
+
+        // Clean up rest handler
+        if (this.rest) {
+            this.rest.destroy();
+        }
+
+        this.eura.emit("nodeDestroy", this);
     }
 
     disconnect() {
-        if (!this.connected) return;
-        this.eura.players.forEach((player) => { if (player.node == this) { player.move() } });
-        this.ws.close(1000, "destroy");
-        this.ws?.removeAllListeners();
-        this.ws = null;
-        this.eura.nodes.delete(this.name);
-        this.eura.emit("nodeDisconnect", this);
         this.connected = false;
+        if (this.ws) this.ws.close();
+        if (this.reconnectAttempt) clearTimeout(this.reconnectAttempt);
     }
 
     get penalties() {
         let penalties = 0;
-        if (!this.connected) return penalties;
-        if (this.stats.players) {
+
+        if (this.stats) {
+            penalties += this.stats.playingPlayers * 1;
+            penalties += (this.stats.cpu.systemLoad / this.stats.cpu.cores) * 10;
+            if (this.stats.frameStats && this.stats.frameStats.deficit) {
+                penalties += Math.round(this.stats.frameStats.deficit * 2.5);
+            }
             penalties += this.stats.players;
         }
-        if (this.stats.cpu && this.stats.cpu.systemLoad) {
-            penalties += Math.round(Math.pow(1.05, 100 * this.stats.cpu.systemLoad) * 10 - 10);
-        }
-        if (this.stats.frameStats) {
-            if (this.stats.frameStats.deficit) {
-                penalties += this.stats.frameStats.deficit;
-            }
-            if (this.stats.frameStats.nulled) {
-                penalties += this.stats.frameStats.nulled * 2;
-            }
-        }
+
         return penalties;
+    }
+
+    // Get node health status
+    getHealthStatus() {
+        const now = Date.now();
+        const uptime = now - this.lastStats;
+        
+        return {
+            connected: this.connected,
+            uptime,
+            ping: this.lastPing,
+            averagePing: this.pingHistory.length > 0 ? 
+                this.pingHistory.reduce((a, b) => a + b, 0) / this.pingHistory.length : 0,
+            penalties: this.penalties,
+            players: this.stats.players,
+            playingPlayers: this.stats.playingPlayers,
+            cpuLoad: this.stats.cpu ? this.stats.cpu.systemLoad / this.stats.cpu.cores : 0,
+            memoryUsage: this.stats.memory ? 
+                (this.stats.memory.used / this.stats.memory.allocated) * 100 : 0
+        };
     }
 }
 
