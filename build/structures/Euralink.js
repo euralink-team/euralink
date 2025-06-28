@@ -16,6 +16,13 @@ class Euralink extends EventEmitter {
    * @param {Function} options.send - Function to send payloads to Discord
    * @param {boolean|Object} [options.euraSync] - Enable voice status updates (default: false) or pass { template: '...' }
    * @param {boolean|Object} [options.setActivityStatus] - Enable bot activity status updates (default: false) or pass { template: '...' }
+   * @param {boolean} [options.autoResume] - Enable autoResume functionality (default: false)
+   * @param {number} [options.multipleTrackHistory] - Number of previous tracks to remember (default: 1)
+   * @param {boolean} [options.lazyLoad] - Enable lazy loading for better performance (default: false)
+   * @param {number} [options.lazyLoadTimeout] - Timeout for lazy loading in ms (default: 5000)
+   * @param {string} [options.defaultSearchPlatform] - Default search platform (default: "ytmsearch")
+   * @param {string} [options.restVersion] - Lavalink REST API version (default: "v3")
+   * @param {Array} [options.plugins] - Array of Euralink plugins
    */
   constructor(client, nodes, options) {
     super();
