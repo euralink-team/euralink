@@ -262,27 +262,27 @@ class Player extends EventEmitter {
             if (!this.connected) {
                 throw new Error("Player connection is not initiated. Kindly use Euralink.createConnection() and establish a connection, TIP: Check if Guild Voice States intent is set/provided & 'updateVoiceState' is used in the raw(Gateway Raw) event");
             }
-            if (!this.queue.length) return;
+        if (!this.queue.length) return;
 
-            this.current = this.queue.shift();
+        this.current = this.queue.shift();
 
-            if (!this.current.track) {
-                this.current = await this.current.resolve(this.eura);
-            }
+        if (!this.current.track) {
+            this.current = await this.current.resolve(this.eura);
+        }
 
-            this.playing = true;
-            this.position = 0;
+        this.playing = true;
+        this.position = 0;
             this.timestamp = Date.now();
 
-            const { track } = this.current;
+        const { track } = this.current;
 
             this.queueUpdate({
                 track: {
                     encoded: track,
-                },
-            });
+            },
+        });
 
-            return this;
+        return this;
         } catch (err) {
             this.eura.emit('playerError', this, err);
             throw err;
@@ -291,33 +291,33 @@ class Player extends EventEmitter {
 
     async restart() {
         try {
-            if (!this.current || !this.connected) return;
+        if (!this.current || !this.connected) return;
             
             // Use saved position from autoResumeState if available, otherwise use current position
             const resumePosition = this.autoResumeState.lastPosition || this.position;
             
-            const data = {
-                track: { encoded: this.current.track },
+        const data = {
+        track: { encoded: this.current.track },
                 position: resumePosition,
-                paused: this.paused,
-                volume: this.volume,
-            };
+        paused: this.paused,
+        volume: this.volume,
+        };
             
-            if (this.filters && typeof this.filters.getPayload === "function") {
-                const filterPayload = this.filters.getPayload();
-                if (filterPayload && Object.keys(filterPayload).length > 0) {
-                    data.filters = filterPayload;
-                }
-            }
+        if (this.filters && typeof this.filters.getPayload === "function") {
+        const filterPayload = this.filters.getPayload();
+        if (filterPayload && Object.keys(filterPayload).length > 0) {
+            data.filters = filterPayload;
+        }
+        }
             
-            await this.node.rest.updatePlayer({
-                guildId: this.guildId,
-                data,
-            });
+        await this.node.rest.updatePlayer({
+        guildId: this.guildId,
+        data,
+        });
             
             // Update the position to match what we sent to Lavalink
             this.position = resumePosition;
-            this.playing = !this.paused;
+        this.playing = !this.paused;
             this.autoResumeState.lastUpdate = Date.now();
             
             this.eura.emit("debug", this.guildId, `Player state restored after node reconnect (autoResume) at position ${resumePosition}ms`);
@@ -452,22 +452,44 @@ class Player extends EventEmitter {
         } else return this;
     }
 
-    connect(options = this) {
-        const { guildId, voiceChannel, deaf = true, mute = false } = options;
-        this.send({
-            op: 4, // Voice State Update opcode
-            d: {
-                guild_id: guildId,
-                channel_id: voiceChannel,
-                self_deaf: deaf,
-                self_mute: mute,
-            }
-        });
+    async connect(options = this) {
+        if (this.eura.leastUsedNodes.length === 0) throw new Error("No nodes are available.");
+        if (this.connected) {
+            this.eura.emit("debug", `Player ${this.guildId} is already connected.`);
+            return this;
+        }
 
-        // Don't set connected = true here - wait for voice state/server update events
-        // this.connected = true
+        const { guildId, voiceChannel, textChannel } = options;
+        if (!guildId || !voiceChannel || !textChannel) {
+            throw new Error("Missing required options: guildId, voiceChannel, textChannel");
+        }
 
-        this.eura.emit("debug", this.guildId, `Player has informed the Discord Gateway to Establish Voice Connectivity in ${voiceChannel} Voice Channel, Awaiting Confirmation(Via Voice State Update & Voice Server Update events)`);
+        if (this.connection.connectionState === 'connecting') {
+            this.eura.emit("debug", `Player ${this.guildId} is already connecting.`);
+            return this;
+        }
+
+        this.connection.connectionState = 'connecting';
+        this.voiceChannel = voiceChannel;
+        this.textChannel = textChannel;
+
+        try {
+            this.eura.send({
+                op: 4,
+                d: {
+                    guild_id: guildId,
+                    channel_id: voiceChannel,
+                    self_mute: this.mute,
+                    self_deaf: this.deaf,
+                },
+            });
+            this.eura.emit("debug", `Player ${this.guildId} requested to connect to voice channel ${voiceChannel}.`);
+        } catch (error) {
+            this.connection.connectionState = 'disconnected';
+            throw error;
+        }
+
+        return this;
     }
 
     stop() {
@@ -520,7 +542,7 @@ class Player extends EventEmitter {
         if (!["none", "track", "queue"].includes(mode)) throw new RangeError("Loop mode must be 'none', 'track', or 'queue'");
 
         this.loop = mode;
-        return this;
+        return this.loop;
     }
 
     setTextChannel(channel) {
@@ -546,48 +568,66 @@ class Player extends EventEmitter {
         return this;
     }
 
-    disconnect() {
-        this.send({
-            guild_id: this.guildId,
-            channel_id: null,
-        });
-
-        this.connected = false;
-        
-        // Clear voice channel status when disconnecting
-        if (this.eura.euraSync && this.voiceChannel) {
-            this.eura.euraSync.clearVoiceStatus(this.voiceChannel, 'Player disconnected')
-                .catch(error => {
-                    this.eura.emit("debug", this.guildId, `EuraSync error: ${error.message}`);
-                });
+    async disconnect() {
+        if (this.connection.connectionState === 'disconnected' || !this.voiceChannel) {
+            return this;
         }
         
-        this.eura.emit("playerDisconnect", this);
+        this.pause(true);
+        this.playing = false;
+        
+        // Proactively send voice update to leave the channel
+        try {
+            this.eura.send({
+                op: 4,
+                d: {
+                    guild_id: this.guildId,
+                    channel_id: null,
+                    self_mute: false,
+                    self_deaf: false,
+                },
+            });
+        } catch (error) {
+            this.eura.emit("playerError", this, error);
+        }
+
+        this.connection.connectionState = 'disconnected';
+        this.connected = false;
+        this.voiceChannel = null;
+
+        // Use a small delay to ensure the event is emitted after state change
+        setTimeout(() => {
+            this.eura.emit("playerDisconnect", this);
+        }, 100);
+
         return this;
     }
 
-    destroy() {
-        this.playing = false;
-        this.connected = false;
-        
+    async destroy(disconnect = true) {
+        if (disconnect) {
+            await this.disconnect();
+        }
+
+        // Clear any pending updates
         if (this.updateTimeout) {
             clearTimeout(this.updateTimeout);
+            this.updateTimeout = null;
         }
         this.updateQueue = [];
         
-        this.clearAutoResumeState();
-        
-        // Clear voice channel status when destroying player
-        if (this.eura.euraSync && this.voiceChannel) {
-            this.eura.euraSync.clearVoiceStatus(this.voiceChannel, 'Player destroyed')
-                .catch(error => {
-                    this.eura.emit("debug", this.guildId, `EuraSync error: ${error.message}`);
-                });
+        try {
+            await this.node.rest.destroyPlayer(this.guildId);
+            this.eura.emit("debug", `Player ${this.guildId} destroyed on node ${this.node.options.name}`);
+        } catch (error) {
+            // Log error but continue cleanup
+            this.eura.emit("playerError", this, new Error(`Failed to destroy player on node: ${error.message}`));
         }
         
-        this.node.rest.destroyPlayer(this.guildId);
+        // Final cleanup
+        if (this.eura.players.has(this.guildId)) {
+            this.eura.players.delete(this.guildId);
+        }
         this.eura.emit("playerDestroy", this);
-        return this;
     }
 
     async handleEvent(payload) {
@@ -644,7 +684,7 @@ class Player extends EventEmitter {
     }
 
     trackEnd(player, track, payload) {
-        this.playing = false;
+                this.playing = false;
         this.addToPreviousTrack(track);
 
         this.eura.emit("trackEnd", player, track, payload);
@@ -683,7 +723,7 @@ class Player extends EventEmitter {
             return;
         }
 
-        if (this.eura.euraSync && this.voiceChannel) {
+            if (this.eura.euraSync && this.voiceChannel) {
             this.eura.euraSync.clearVoiceStatus(this.voiceChannel, 'Queue ended')
                 .catch(error => {
                     this.eura.emit("debug", this.guildId, `EuraSync error: ${error.message}`);
@@ -726,7 +766,7 @@ class Player extends EventEmitter {
 
     clearData() {
         this.data = {};
-        return this;
+      return this;
     }
 
     toJSON() {
@@ -826,4 +866,4 @@ class Player extends EventEmitter {
     }
 }
 
-module.exports = { Player }; 
+module.exports = { Player };
