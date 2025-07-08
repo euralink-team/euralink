@@ -354,23 +354,40 @@ class Filters {
     }
 
     async clearFilters() {
-        Object.assign(this, new Filters(this.player))
-        
-        await this.updateFilters();
-        return this;
+        try {
+            Object.assign(this, new Filters(this.player));
+            await this.updateFilters();
+            if (this.player && this.player.eura) {
+                this.player.eura.emit("filtersCleared", this.player);
+            }
+            return this;
+        } catch (error) {
+            if (this.player && this.player.eura) {
+                this.player.eura.emit("filtersError", this.player, error);
+            }
+            throw error;
+        }
     }
 
     async updateFilters() {
-        const { equalizer, karaoke, timescale, tremolo, vibrato, rotation, distortion, channelMix, lowPass, volume } = this;
-
-        await this.player.node.rest.updatePlayer({
-            guildId: this.player.guildId,
-            data: {
-                filters: { volume, equalizer, karaoke, timescale, tremolo, vibrato, rotation, distortion, channelMix, lowPass }
+        try {
+            const { equalizer, karaoke, timescale, tremolo, vibrato, rotation, distortion, channelMix, lowPass, volume } = this;
+            await this.player.node.rest.updatePlayer({
+                guildId: this.player.guildId,
+                data: {
+                    filters: { volume, equalizer, karaoke, timescale, tremolo, vibrato, rotation, distortion, channelMix, lowPass }
+                }
+            });
+            if (this.player && this.player.eura) {
+                this.player.eura.emit("filtersUpdated", this.player);
             }
-        });
-
-        return this;
+            return this;
+        } catch (error) {
+            if (this.player && this.player.eura) {
+                this.player.eura.emit("filtersError", this.player, error);
+            }
+            throw error;
+        }
     }
 }
 

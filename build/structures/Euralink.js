@@ -2,6 +2,7 @@ const { EventEmitter } = require("tseep");
 const { Node } = require("./Node");
 const { Player } = require("./Player");
 const { Track } = require("./Track");
+const https = require('https');
 const { version: pkgVersion } = require("../../package.json")
 const fs = require('fs/promises');
 const { EuraSync } = require("./EuraSync");
@@ -12,39 +13,65 @@ class Euralink extends EventEmitter {
   /**
    * @param {Client} client - Your Discord.js client
    * @param {Array} nodes - Lavalink node configs
-   * @param {Object} options - Euralink options
-   * @param {Function} options.send - Function to send payloads to Discord
-   * @param {boolean|Object} [options.euraSync] - Enable voice status updates (default: false) or pass { template: '...' }
-   * @param {boolean|Object} [options.setActivityStatus] - Enable bot activity status updates (default: false) or pass { template: '...' }
-   * @param {boolean} [options.autoResume] - Enable autoResume functionality (default: false)
-   * @param {number} [options.multipleTrackHistory] - Number of previous tracks to remember (default: 1)
-   * @param {boolean} [options.lazyLoad] - Enable lazy loading for better performance (default: false)
-   * @param {number} [options.lazyLoadTimeout] - Timeout for lazy loading in ms (default: 5000)
-   * @param {string} [options.defaultSearchPlatform] - Default search platform (default: "ytmsearch")
-   * @param {string} [options.restVersion] - Lavalink REST API version (default: "v3")
+   * @param {Object} options - Euralink options (modern structured config)
+   * @param {Object} options.rest - REST API config
    * @param {Array} [options.plugins] - Array of Euralink plugins
+   * @param {Object} [options.sync] - EuraSync config
+   * @param {Object} [options.activityStatus] - Activity status config
+   * @param {Object} [options.resume] - Auto-resume config
+   * @param {Object} [options.node] - Node connection config
+   * @param {boolean} [options.autopauseOnEmpty] - Auto-pause when empty
+   * @param {Object} [options.lazyLoad] - Lazy loading config
+   * @param {string} [options.defaultSearchPlatform] - Default search platform
+   * @param {Object} [options.track] - Track-related config
    */
   constructor(client, nodes, options) {
     super();
-    if (!client) throw new Error("Client is required to initialize Euralink");
-    if (!nodes || !Array.isArray(nodes)) throw new Error(`Nodes are required & Must Be an Array(Received ${typeof nodes}) for to initialize Euralink`);
-    if (!options.send || typeof options.send !== "function") throw new Error("Send function is required to initialize Euralink");
+    // Config validation
+    if (!client) throw new Error("[Euralink] Client is required to initialize Euralink");
+    if (!nodes || !Array.isArray(nodes)) throw new Error(`[Euralink] Nodes are required & Must Be an Array (Received ${typeof nodes})`);
+    if (!options || typeof options !== 'object') throw new Error("[Euralink] Options object is required to initialize Euralink");
+    if (!options.defaultSearchPlatform) throw new Error("[Euralink] defaultSearchPlatform is required in options");
+
+    // Modern structured config with defaults
+    this.options = {
+      rest: {
+        version: options.rest?.version || options.restVersion || 'v4',
+        retryCount: options.rest?.retryCount || 3,
+        timeout: options.rest?.timeout || 5000
+      },
+      plugins: options.plugins || [],
+      euraSync: options.EuraSync || options.euraSync || { enabled: false, template: '🎵 {title} by {author}' },
+      activityStatus: options.activityStatus || options.setActivityStatus || { enabled: false, template: '🎵 {title} by {author}' },
+      resume: options.resume || { enabled: options.autoResume ?? false, key: 'euralink-resume', timeout: 60000 },
+      node: options.node || {
+        dynamicSwitching: true,
+        autoReconnect: true,
+        ws: {
+          reconnectTries: 5,
+          reconnectInterval: 5000
+        }
+      },
+      autopauseOnEmpty: options.autopauseOnEmpty ?? true,
+      lazyLoad: options.lazyLoad || { enabled: false, timeout: 5000 },
+      defaultSearchPlatform: options.defaultSearchPlatform || 'ytmsearch',
+      track: options.track || { historyLimit: 20, enableVoting: true, enableFavorites: true, enableUserNotes: true }
+    };
 
     this.client = client;
     this.nodes = nodes;
     this.nodeMap = new Map();
     this.players = new Map();
-    this.options = options;
     this.clientId = null;
     this.initiated = false;
     this.send = options.send || null;
-    this.defaultSearchPlatform = options.defaultSearchPlatform || "ytmsearch";
-    this.restVersion = options.restVersion || "v3";
+    this.defaultSearchPlatform = this.options.defaultSearchPlatform;
+    this.restVersion = this.options.rest.version;
     this.tracks = [];
     this.loadType = null;
     this.playlistInfo = null;
     this.pluginInfo = null;
-    this.plugins = options.plugins;
+    this.plugins = this.options.plugins;
     
     // Performance optimizations
     this.regionCache = new Map();
@@ -52,21 +79,21 @@ class Euralink extends EventEmitter {
     this.cacheTimeout = 30000; // 30 seconds
     
     // Lazy loading support
-    this.lazyLoad = options.lazyLoad || false;
-    this.lazyLoadTimeout = options.lazyLoadTimeout || 5000;
+    this.lazyLoad = this.options.lazyLoad.enabled;
+    this.lazyLoadTimeout = this.options.lazyLoad.timeout;
+
+    // Always check for updates on startup
+    this.checkForUpdates();
     
-    if (options.euraSync === true) {
-      this.euraSync = new EuraSync(client); // default template
-    } else if (typeof options.euraSync === 'object' && options.euraSync !== null) {
-      this.euraSync = new EuraSync(client, options.euraSync); // custom template
+    // EuraSync support
+    if (this.options.sync?.enabled) {
+      this.euraSync = new EuraSync(client, this.options.sync);
     } else {
       this.euraSync = null;
     }
     // setActivityStatus support
-    if (options.setActivityStatus === true) {
-      this.setActivityStatus = { template: 'Now playing: {title}' };
-    } else if (typeof options.setActivityStatus === 'object' && options.setActivityStatus !== null) {
-      this.setActivityStatus = options.setActivityStatus;
+    if (this.options.activityStatus?.enabled) {
+      this.setActivityStatus = this.options.activityStatus;
     } else {
       this.setActivityStatus = null;
     }
@@ -76,6 +103,26 @@ class Euralink extends EventEmitter {
     this.version = pkgVersion;
 
     if (this.restVersion && !versions.includes(this.restVersion)) throw new RangeError(`${this.restVersion} is not a valid version`);
+  }
+
+  /**
+   * Validate the current config. Throws if invalid.
+   */
+  validateConfig() {
+    if (!this.client) throw new Error("[Euralink] Client is required");
+    if (!this.nodes || !Array.isArray(this.nodes)) throw new Error("[Euralink] Nodes must be an array");
+    if (!this.options.defaultSearchPlatform) throw new Error("[Euralink] defaultSearchPlatform is required");
+    // Add more checks as needed
+    return true;
+  }
+
+  /**
+   * Clear all internal caches (region, node health, etc)
+   */
+  clearAllCaches() {
+    this.regionCache.clear();
+    this.nodeHealthCache.clear();
+    this.emit("debug", "All caches cleared");
   }
 
   get leastUsedNodes() {
@@ -142,10 +189,14 @@ class Euralink extends EventEmitter {
   }
 
   createNode(options) {
-    const node = new Node(this, options, this.options);
-    this.nodeMap.set(options.name || options.host, node);
+    // Ensure restVersion is included in node config
+    const nodeConfig = {
+      ...options,
+      restVersion: this.options.rest.version || options.restVersion || 'v4',
+    };
+    const node = new Node(this, nodeConfig, this.options);
+    this.nodeMap.set(nodeConfig.name || nodeConfig.host, node);
     node.connect();
-
     this.emit("nodeCreate", node);
     return node;
   }
@@ -197,6 +248,36 @@ class Euralink extends EventEmitter {
     });
 
     return nodesByRegion;
+  }
+
+  async checkForUpdates() {
+    try {
+      const { version: pkgVersion } = require("../../package.json");
+      await new Promise((resolve, reject) => {
+        https.get('https://registry.npmjs.org/euralink', (res) => {
+          let data = '';
+          res.on('data', chunk => data += chunk);
+          res.on('end', () => {
+            try {
+              const info = JSON.parse(data);
+              const latest = info['dist-tags'].latest;
+              if (latest && latest !== pkgVersion) {
+                console.log(`[Euralink] 🚨 New version available: ${latest} (current: ${pkgVersion})\nRun \`npm install euralink@latest\` to update!`);
+              }
+              resolve();
+            } catch (e) {
+              this.emit("debug", `Failed checking updates for euralink: ${e.message}`);
+              resolve();
+            }
+          });
+        }).on('error', (err) => {
+          this.emit("debug", `Failed checking updates for euralink: ${err.message}`);
+          resolve();
+        });
+      });
+    } catch (err) {
+      this.emit("debug", `[Euralink] Error in checkForUpdates: ${err.message}`);
+    }
   }
 
   // Get best node for a specific region

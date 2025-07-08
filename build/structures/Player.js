@@ -34,6 +34,7 @@ class Player extends EventEmitter {
         this.position = 0;
         this.current = null;
         this.previousTracks = [];
+        this.historyLimit = options.historyLimit || 20; // NEW: configurable history size
         this.playing = false;
         this.paused = false;
         this.connected = false;
@@ -198,15 +199,54 @@ class Player extends EventEmitter {
      * @private
      */
     addToPreviousTrack(track) {
-      if (Number.isInteger(this.eura.options.multipleTrackHistory) && this.previousTracks.length >= this.eura.options.multipleTrackHistory) {
-        this.previousTracks.splice(this.eura.options.multipleTrackHistory, this.previousTracks.length);
-      } 
-      // If its falsy Save Only last Played Track.
-      else if(!this.eura.options.multipleTrackHistory) {
-       this.previousTracks[0] = track;
-       return;
-      }
-      this.previousTracks.unshift(track)
+        if (!track) return;
+        // Attach metadata
+        const now = Date.now();
+        let historyEntry = {
+            ...track,
+            playedAt: now,
+            replayCount: 1
+        };
+        // If this track is already the most recent, increment replayCount
+        if (this.previousTracks.length > 0 && this.previousTracks[0].info.identifier === track.info.identifier) {
+            this.previousTracks[0].replayCount += 1;
+            this.previousTracks[0].playedAt = now;
+        } else {
+            this.previousTracks.unshift(historyEntry);
+            // Enforce history size limit
+            if (this.previousTracks.length > this.historyLimit) {
+                this.previousTracks = this.previousTracks.slice(0, this.historyLimit);
+            }
+        }
+    }
+    /**
+     * @description Get the full track history (recently played)
+     * @returns {Array} Array of track history entries
+     */
+    getHistory() {
+        return this.previousTracks;
+    }
+
+    /**
+     * Get all favorite tracks from history.
+     * @returns {Array} Array of favorited tracks
+     */
+    getFavorites() {
+        return this.previousTracks.filter(track => track.favorited);
+    }
+
+    /**
+     * Get unique artists and sources from queue and history.
+     * @returns {Object} { artists: Set, sources: Set }
+     */
+    getUniqueArtistsAndSources() {
+        const artists = new Set();
+        const sources = new Set();
+        for (const track of [...this.queue, ...this.previousTracks]) {
+            if (track.info?.author) artists.add(track.info.author);
+            if (track.info?.sourceName) sources.add(track.info.sourceName);
+        }
+        return { artists, sources };
     }
 
     queueUpdate(updateData) {
@@ -262,27 +302,21 @@ class Player extends EventEmitter {
             if (!this.connected) {
                 throw new Error("Player connection is not initiated. Kindly use Euralink.createConnection() and establish a connection, TIP: Check if Guild Voice States intent is set/provided & 'updateVoiceState' is used in the raw(Gateway Raw) event");
             }
-        if (!this.queue.length) return;
-
-        this.current = this.queue.shift();
-
-        if (!this.current.track) {
-            this.current = await this.current.resolve(this.eura);
-        }
-
-        this.playing = true;
-        this.position = 0;
+            if (!this.queue.length) return;
+            this.current = this.queue.shift();
+            if (!this.current.track) {
+                this.current = await this.current.resolve(this.eura);
+            }
+            this.playing = true;
+            this.position = 0;
             this.timestamp = Date.now();
-
-        const { track } = this.current;
-
+            const { track } = this.current;
             this.queueUpdate({
                 track: {
                     encoded: track,
-            },
-        });
-
-        return this;
+                },
+            });
+            return this;
         } catch (err) {
             this.eura.emit('playerError', this, err);
             throw err;

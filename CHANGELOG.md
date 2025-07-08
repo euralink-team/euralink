@@ -1,11 +1,33 @@
 # Changelog
 
-All notable changes to Euralink will be documented in this file.
+## [0.2.5] - 2024-08-07
 
-## [0.2.1] - 2025-01-30
+### Major Features & Improvements
+- **Grouped Config Structure:**
+  - All options are now grouped (rest, plugins, sync, activityStatus, resume, node, autopauseOnEmpty, lazyLoad, defaultSearchPlatform, track, debug, bypassChecks) for clarity and extensibility.
+  - See README for a full advanced config example.
+- **Advanced Options:**
+  - New options for REST retries/timeouts, node reconnect, lazy loading, track history, voting, favorites, user notes, and more.
+- **Event-Driven Architecture:**
+  - New events: `filtersCleared`, `filtersError`, `filtersUpdated`, `queueCleared`, `queueShuffled`, `queueError`, `restCacheCleared`, `restError`, `connectionError`, `pluginLoaded`, `pluginUnloaded`.
+  - All major actions and errors now emit events for easy integration and debugging.
+- **Robust Error Handling:**
+  - All async methods use try/catch and emit user-friendly error events.
+  - Improved runtime validation and descriptive error messages.
+- **Cache & State Management:**
+  - Methods to clear all caches and state: `clearAllCaches`, `clearState`, `clearThumbnailCache`, etc.
+  - Utility commands in the example bot: `!clearrestcache`, `!clearnodestate`, `!cleartrackthumbs`, `!clearconnection`.
+- **README & Documentation:**
+  - README now includes a full advanced config example, option table, and new event documentation.
+  - Usage patterns and grouped config structure are clearly explained.
 
-### 🔧 Bug Fixes & Reliability
+### Breaking Changes
+- `restVersion` is now expected inside the `rest` group, not at the root of the options object.
+- All config options should use the new grouped structure for best compatibility.
 
-- **Fixed Player State Corruption**: Resolved a critical issue where the player's connection state could become inconsistent after being restored or disconnected. The `disconnect()` method was improved to ensure the bot reliably leaves the voice channel, preventing cases where it would get "stuck".
-- **Corrected Node Availability Check**: Fixed a crash that incorrectly reported "No nodes are available" when creating a player, even with active Lavalink nodes. The check now correctly verifies the live status of nodes instead of relying on the initial static configuration.
-- Special thanks to **@hamptonn** for reporting these issues.
+### Other Changes
+- Improved JSDoc and type definitions.
+- Example bot updated to demonstrate all new features and commands.
+- All structure files linted and tested for reliability.
+
+---

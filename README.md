@@ -41,7 +41,7 @@
 - 🔁 **Supports** Lavalink v3 and v4 protocols
 - 📝 **Full TypeScript support** with complete type definitions
 - 🧩 **Plugin system** for easy extensibility
-- 🧱 **Robust error handling** and comprehensive event system
+- 🛡️ **Robust error handling** and **comprehensive event-driven system** for maximum reliability and extensibility
 - 💬 **Ready for Discord.js v14+** and modern Discord bots
 
 ### 🌐 **Reliability & Scalability**
@@ -117,7 +117,11 @@ const eura = new Euralink(client, nodes, {
         if (guild) guild.shard.send(data);
     },
     defaultSearchPlatform: 'ytmsearch',
-    restVersion: 'v4',
+    rest: {
+        version: 'v4',
+        retryCount: 3,
+        timeout: 5000
+    },
     
     // V2 Features
     euraSync: {
@@ -146,7 +150,7 @@ client.on('ready', async () => {
 process.on('SIGINT', async () => {
     console.log('[Euralink V2] Saving player states...');
     await eura.savePlayersState('./EuraPlayers.json');
-    process.exit(0);
+  process.exit(0);
 });
 
 // Music command handler
@@ -177,10 +181,7 @@ client.on('messageCreate', async (message) => {
     const { loadType, tracks, playlistInfo } = result;
 
     if (loadType === 'playlist') {
-        for (const track of tracks) {
-            track.info.requester = message.author;
-            player.queue.add(track);
-        }
+        player.queue.addPlaylist(tracks, playlistInfo);
         message.channel.send(`📀 Playlist: **${playlistInfo.name}** with **${tracks.length}** tracks`);
         if (!player.playing && !player.paused) return player.play();
     } else if (loadType === "search" || loadType === "track") {
@@ -197,10 +198,10 @@ client.on('messageCreate', async (message) => {
 // Essential: Forward Discord voice events to Euralink
 client.on('raw', (d) => {
     if ([
-        GatewayDispatchEvents.VoiceStateUpdate,
-        GatewayDispatchEvents.VoiceServerUpdate,
+            GatewayDispatchEvents.VoiceStateUpdate,
+            GatewayDispatchEvents.VoiceServerUpdate,
     ].includes(d.t)) {
-        eura.updateVoiceState(d);
+    eura.updateVoiceState(d);
     }
 });
 
@@ -388,28 +389,98 @@ const nodes = [
 ### Euralink Options
 
 ```javascript
+// Advanced Euralink V0.2.5 Options Example
 const eura = new Euralink(client, nodes, {
-    send: (data) => { /* Discord Gateway send function */ },
-    defaultSearchPlatform: 'ytmsearch', // or 'ytsearch', 'scsearch'
-    restVersion: 'v4', // or 'v3'
-    
-    // V2 Features
-    euraSync: {
-        template: '🎵 {title} by {author}'
-    },
-    setActivityStatus: {
-        template: '🎵 {title} by {author}'
-    },
-    autoResume: true,
-    
-    // Performance options
-    restTimeout: 15000,
-    restRetries: 3,
-    
-    // Plugin system
-    plugins: []
+  // Required: How to send voice state updates to Discord
+  send: (data) => {
+    const guild = client.guilds.cache.get(data.d.guild_id);
+    if (guild) guild.shard.send(data);
+  },
+
+  // Core
+  defaultSearchPlatform: 'ytsearch', // Default search source (ytsearch, ytmsearch, scsearch, etc.)
+
+  // REST API
+  rest: {
+    version: 'v4',                 // Lavalink REST API version
+    retryCount: 3,                   // Retry failed REST requests
+    timeout: 5000                    // REST request timeout (ms)
+  },
+
+  // Plugins
+  plugins: [
+    // new MyCustomPlugin()
+  ],
+
+  // EuraSync (voice channel status)
+  sync: {
+    enabled: true,
+    template: '🎵 {title} by {author}'
+  },
+
+  // Activity status (bot presence)
+  activityStatus: {
+    enabled: true,
+    template: '🎵 {title} by {author}'
+  },
+
+  // AutoResume (restore players on restart)
+  resume: {
+    enabled: true,
+    key: 'euralink-resume',          // Unique key for session resuming
+    timeout: 60000                   // Resume timeout (ms)
+  },
+
+  // Node management
+  node: {
+    dynamicSwitching: true,          // Switch nodes automatically on failure
+    autoReconnect: true,             // Auto-reconnect on disconnect
+    ws: {
+      reconnectTries: 5,             // WebSocket reconnect attempts
+      reconnectInterval: 5000        // Interval between reconnects (ms)
+    }
+  },
+
+  // Performance
+  autopauseOnEmpty: true,            // Auto-pause when everyone leaves
+  lazyLoad: {
+    enabled: true,
+    timeout: 5000                    // Delay before loading tracks (ms)
+  },
+
+  // Track/queue features
+  track: {
+    historyLimit: 20,                // How many tracks to keep in history
+    enableVoting: true,              // Enable track voting
+    enableFavorites: true,           // Enable favorites system
+    enableUserNotes: true            // Allow users to add notes to tracks
+  },
+
+  // Debugging
+  debug: false,                      // Enable debug logging
+
+  // Bypass checks (for dev/testing)
+  bypassChecks: {
+    nodeFetchInfo: true              // Skip node info fetch on connect
+  }
 });
 ```
+
+| Option                | Type / Example         | Description                                                                                   |
+|-----------------------|-----------------------|-----------------------------------------------------------------------------------------------|
+| `rest`                | Object                | REST-specific options (timeouts, retries, etc).                                               |
+| `plugins`             | Array                 | List of plugin instances to load.                                                             |
+| `sync`                | Object                | EuraSync config for updating voice channel status.                                            |
+| `activityStatus`      | Object                | Bot activity status config (updates bot presence).                                            |
+| `resume`              | Object                | AutoResume config for restoring players after restart.                                        |
+| `node`                | Object                | Node management options (dynamic switching, reconnect, etc).                                  |
+| `autopauseOnEmpty`    | Boolean               | Auto-pause when everyone leaves the voice channel.                                            |
+| `lazyLoad`            | Object/Boolean        | Lazy-load tracks for performance.                                                             |
+| `track`               | Object                | Track/queue features (history, voting, favorites, notes).                                     |
+| `debug`               | Boolean               | Enable/disable debug logging.                                                                 |
+| `bypassChecks`        | Object                | Bypass certain checks (for development/testing).                                              |
+
+> **Note:** The config structure is now grouped for clarity and extensibility. See the enhanced example bot for a full config sample and advanced usage.
 
 ---
 
@@ -468,6 +539,12 @@ The enhanced example bot includes testing commands for validation:
 - `!health` - System health monitoring
 - `!stats` - Player statistics
 - `!nodes` - Node connection status
+
+#### Utility & Cache Management Commands
+- `!clearrestcache` - Clear all REST caches
+- `!clearnodestate` - Clear all node states
+- `!cleartrackthumbs` - Clear track thumbnail cache
+- `!clearconnection` - Clear current player's connection state
 
 ---
 
@@ -538,6 +615,22 @@ filters.setChannelMix(enabled, options)
 filters.setLowPass(enabled, options)
 filters.clearFilters()
 ```
+
+### New Events
+
+| Event Name         | Description                                 |
+|--------------------|---------------------------------------------|
+| filtersCleared     | Emitted when all filters are cleared        |
+| filtersError       | Emitted on filter error                     |
+| filtersUpdated     | Emitted when filters are updated            |
+| queueCleared       | Emitted when the queue is cleared           |
+| queueShuffled      | Emitted when the queue is shuffled          |
+| queueError         | Emitted on queue error                      |
+| restCacheCleared   | Emitted when REST cache is cleared          |
+| restError          | Emitted on REST error                       |
+| connectionError    | Emitted on connection error                 |
+| pluginLoaded       | Emitted when a plugin is loaded             |
+| pluginUnloaded     | Emitted when a plugin is unloaded           |
 
 For complete API documentation, see [TypeDocs](https://euralink-website.vercel.app/) or [index.d.ts](./build/index.d.ts).
 
@@ -644,7 +737,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🔗 Links
 
-- [📚 Documentation](https://euralink-website.vercel.app/)
+- [📚 Documentation](https://euralink.js.org/)
 - [🐙 GitHub Repository](https://github.com/euralink-team/euralink)
 - [📦 NPM Package](https://www.npmjs.com/package/euralink)
 - [📋 Changelog](https://github.com/euralink-team/euralink/blob/main/CHANGELOG.md)
@@ -660,3 +753,12 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 [![GitHub](https://img.shields.io/badge/GitHub-Ryuzii-black?logo=github&style=for-the-badge)](https://github.com/Ryuzii)
 
 </div>
+
+---
+
+## ✅ Before Publishing
+
+- [x] All structure files linted and tested
+- [x] Robust error handling and event emission in all core modules
+- [x] All caches and state can be cleared via code or commands
+- [x] Example bot demonstrates all new features and commands

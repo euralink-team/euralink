@@ -33,6 +33,9 @@ class Queue extends Array {
 
     clear() {
         this.length = 0;
+        if (this.player && this.player.eura) {
+            this.player.eura.emit('queueCleared', this.player);
+        }
     }
 
     // Improved shuffle with async/sync support and better performance
@@ -47,28 +50,36 @@ class Queue extends Array {
         return this;
     }
 
-    // Async shuffle for large queues
     async shuffleAsync() {
-        if (this.length <= 1) return this;
-        
-        // Process in chunks to avoid blocking
-        const chunkSize = 1000;
-        for (let i = 0; i < this.length; i += chunkSize) {
-            const end = Math.min(i + chunkSize, this.length);
+        try {
+            if (this.length <= 1) return this;
             
-            // Shuffle current chunk
-            for (let j = end - 1; j > i; j--) {
-                const k = i + Math.floor(Math.random() * (j - i + 1));
-                [this[j], this[k]] = [this[k], this[j]];
+            // Process in chunks to avoid blocking
+            const chunkSize = 1000;
+            for (let i = 0; i < this.length; i += chunkSize) {
+                const end = Math.min(i + chunkSize, this.length);
+                
+                // Shuffle current chunk
+                for (let j = end - 1; j > i; j--) {
+                    const k = i + Math.floor(Math.random() * (j - i + 1));
+                    [this[j], this[k]] = [this[k], this[j]];
+                }
+                
+                // Yield control to event loop
+                if (i + chunkSize < this.length) {
+                    await new Promise(resolve => setImmediate(resolve));
+                }
             }
-            
-            // Yield control to event loop
-            if (i + chunkSize < this.length) {
-                await new Promise(resolve => setImmediate(resolve));
+            if (this.player && this.player.eura) {
+                this.player.eura.emit('queueShuffled', this.player);
             }
+            return this;
+        } catch (error) {
+            if (this.player && this.player.eura) {
+                this.player.eura.emit('queueError', this.player, error);
+            }
+            throw error;
         }
-        
-        return this;
     }
 
     move(from, to) {

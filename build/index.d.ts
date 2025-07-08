@@ -1,7 +1,11 @@
 import { EventEmitter } from "tseep";
 
+/** Nullable type helper */
 type Nullable<T> = T | null;
 
+/**
+ * Represents a music track with metadata and utility methods.
+ */
 export declare class Track {
     constructor(data: any, requester: any, node: Node);
     public track: string;
@@ -18,7 +22,16 @@ export declare class Track {
         thumbnail: string | null;
         requester: any;
     };
+    /**
+     * Attempts to resolve the track using the Euralink instance.
+     * Emits 'trackError' on failure.
+     * @throws Error if resolution fails
+     */
     public resolve(eura: Euralink): Promise<Track>;
+    /**
+     * Clears the static thumbnail cache for all tracks.
+     */
+    static clearThumbnailCache(): void;
 }
 
 export interface RestOptions {
@@ -37,6 +50,10 @@ interface RequestOptions {
 
 interface RestResponse {}
 
+/**
+ * REST API manager for Lavalink nodes.
+ * Emits: 'restError', 'restCacheCleared'
+ */
 export declare class Rest extends EventEmitter {
     constructor(eura: Euralink, options: RestOptions);
     public eura: Euralink;
@@ -59,6 +76,10 @@ export declare class Rest extends EventEmitter {
     public getRoutePlannerStatus(): Promise<void>;
     public getRoutePlannerAddress(address: string): Promise<void>;
     public parseResponse(req: any): Promise<RestResponse | null>;
+    /**
+     * Clears all REST-related caches and emits 'restCacheCleared'.
+     */
+    public clearAllCaches(): void;
 }
 
 export interface Player {
@@ -74,6 +95,14 @@ export interface Queue<T = any> extends Array<T> {
     move(from: number, to: number): this;
     remove(index: number): T | null;
     toArray(): T[];
+    /**
+     * Clears the queue and emits 'queueCleared'.
+     */
+    clear(): void;
+    /**
+     * Asynchronously shuffles the queue in chunks, emits 'queueShuffled' or 'queueError'.
+     */
+    shuffleAsync(): Promise<this>;
 }
 
 export interface EuralinkEvents {
@@ -82,11 +111,34 @@ export interface EuralinkEvents {
     queueRemove: (player: Player, index: number, removed: any) => void;
     playerMigrated: (player: Player, fromNode: Node, toNode: Node) => void;
     playerError: (player: Player, error: Error) => void;
+    // New events:
+    filtersCleared: (player: Player) => void;
+    filtersError: (player: Player, error: Error) => void;
+    filtersUpdated: (player: Player) => void;
+    queueCleared: (player: Player) => void;
+    queueShuffled: (player: Player) => void;
+    queueError: (player: Player, error: Error) => void;
+    restCacheCleared: () => void;
+    restError: (error: Error) => void;
+    connectionError: (connection: Connection, error: Error) => void;
+    trackError: (track: Track, error: Error) => void;
+    pluginLoaded: (plugin: Plugin) => void;
+    pluginUnloaded: (plugin: Plugin) => void;
 }
 
 export declare class Plugin {
+    /**
+     * @param name The plugin name (required)
+     * @throws Error if name is not provided
+     */
     constructor(name: string);
+    /**
+     * Called when the plugin is loaded. Emits 'pluginLoaded' if Euralink is provided.
+     */
     load(eura: Euralink): void;
+    /**
+     * Called when the plugin is unloaded. Emits 'pluginUnloaded' if Euralink is provided.
+     */
     unload(eura: Euralink): void;
 }
 
@@ -235,6 +287,19 @@ export type EuralinkEvents = {
     [EuralinkEventType.PlayerUpdate]: (player: Player, payload: any) => void;
     [EuralinkEventType.QueueEnd]: (player: Player) => void;
     [EuralinkEventType.Debug]: (message: string[]) => void;
+    // Additional events from above
+    filtersCleared: (player: Player) => void;
+    filtersError: (player: Player, error: Error) => void;
+    filtersUpdated: (player: Player) => void;
+    queueCleared: (player: Player) => void;
+    queueShuffled: (player: Player) => void;
+    queueError: (player: Player, error: Error) => void;
+    restCacheCleared: () => void;
+    restError: (error: Error) => void;
+    connectionError: (connection: Connection, error: Error) => void;
+    trackError: (track: Track, error: Error) => void;
+    pluginLoaded: (plugin: Plugin) => void;
+    pluginUnloaded: (plugin: Plugin) => void;
 };
 
 type k = string;
@@ -419,7 +484,14 @@ export declare class Node {
         },
     };
     public lastStats: number;
-    fetchInfo(): Promise<NodeInfo | null>;
+    /**
+     * Fetches node info, emits 'nodeError' on failure.
+     */
+    fetchInfo(options?: { restVersion?: string, includeHeaders?: boolean }): Promise<NodeInfo | null>;
+    /**
+     * Clears node state and caches.
+     */
+    clearState(): void;
     lyrics: {
         checkAvailable: (eitherOne: boolean, ...plugins: string[]) => Promise<boolean>;
         get: (trackOrEncodedTrackStr: Track | string, skipTrackSource: boolean) => Promise<NodeLyricsResult | null>;
@@ -486,6 +558,10 @@ export type FilterOptions = {
     _8d?: boolean | null;
 };
 
+/**
+ * Audio filter manager for a player.
+ * Emits: 'filtersCleared', 'filtersError', 'filtersUpdated'
+ */
 export declare class Filters {
     constructor(player: Player, options: FilterOptions);
     public player: Player;
@@ -561,8 +637,16 @@ export declare class Filters {
     public set8D(enabled: boolean, options?: {
         rotationHz: number;
     }): this;
-    public clearFilters(): this;
-    public updateFilters(): this;
+    /**
+     * Clears all filters and emits 'filtersCleared'.
+     * @returns Promise<this>
+     */
+    public clearFilters(): Promise<this>;
+    /**
+     * Updates filters and emits 'filtersUpdated' or 'filtersError'.
+     * @returns Promise<this>
+     */
+    public updateFilters(): Promise<this>;
 }
 
 export type Voice = {
@@ -571,6 +655,10 @@ export type Voice = {
     endpoint: string;
 };
 
+/**
+ * Manages the voice connection for a player.
+ * Emits: 'connectionError'
+ */
 export declare class Connection {
     constructor(player: Player);
     public player: Player;
@@ -587,6 +675,10 @@ export declare class Connection {
         self_deaf: boolean;
         self_mute: boolean;
     }): void;
+    /**
+     * Clears the connection state and resets all fields.
+     */
+    public clearState(): void;
     private updatePlayerVoiceData(): void;
 }
 
