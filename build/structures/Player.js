@@ -661,6 +661,10 @@ class Player extends EventEmitter {
         if (this.eura.players.has(this.guildId)) {
             this.eura.players.delete(this.guildId);
         }
+        // Clear bot activity status if setActivityStatus is enabled
+        if (this.eura.setActivityStatus && this.eura.client.user) {
+            this.eura.client.user.setActivity(null);
+        }
         this.eura.emit("playerDestroy", this);
     }
 
@@ -732,6 +736,10 @@ class Player extends EventEmitter {
         if (!this.connected) {
             this.eura.emit("debug", this.guildId, "Player disconnected from voice, skipping next track playback");
             this.eura.emit("queueEnd", player, track, payload);
+            // Clear bot activity status if setActivityStatus is enabled
+            if (this.eura.setActivityStatus && this.eura.client.user) {
+                this.eura.client.user.setActivity(null);
+            }
             return;
         }
 
@@ -764,6 +772,11 @@ class Player extends EventEmitter {
                 });
         }
 
+        // Clear bot activity status if setActivityStatus is enabled
+        if (this.eura.setActivityStatus && this.eura.client.user) {
+            this.eura.client.user.setActivity(null);
+        }
+
         this.eura.emit("queueEnd", player, track, payload);
     }
 
@@ -778,7 +791,7 @@ class Player extends EventEmitter {
     socketClosed(player, payload) {
         this.eura.emit("socketClosed", player, payload);
         
-        if (this.autoResumeState.enabled && this.current) {
+        if (this.autoResumeState.enabled && this.eura.options.resume?.enabled && this.current) {
             setTimeout(() => {
                 this.restart();
             }, 1000);

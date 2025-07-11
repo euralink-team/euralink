@@ -33,6 +33,11 @@ class Euralink extends EventEmitter {
     if (!options || typeof options !== 'object') throw new Error("[Euralink] Options object is required to initialize Euralink");
     if (!options.defaultSearchPlatform) throw new Error("[Euralink] defaultSearchPlatform is required in options");
 
+    /**
+     * WARNING: The resume.enabled option controls whether player state is kept up to date for auto-resume.
+     * You can always call loadPlayersState to restore players, but if resume.enabled is false, their state will NOT be updated for future saves.
+     * For true auto-resume, set resume.enabled: true and always call savePlayersState on shutdown and loadPlayersState on startup.
+     */
     // Modern structured config with defaults
     this.options = {
       rest: {
@@ -41,7 +46,7 @@ class Euralink extends EventEmitter {
         timeout: options.rest?.timeout || 5000
       },
       plugins: options.plugins || [],
-      euraSync: options.EuraSync || options.euraSync || { enabled: false, template: '🎵 {title} by {author}' },
+      euraSync: options.euraSync || options.euraSync || { enabled: false, template: '🎵 {title} by {author}' },
       activityStatus: options.activityStatus || options.setActivityStatus || { enabled: false, template: '🎵 {title} by {author}' },
       resume: options.resume || { enabled: options.autoResume ?? false, key: 'euralink-resume', timeout: 60000 },
       node: options.node || {
@@ -85,9 +90,10 @@ class Euralink extends EventEmitter {
     // Always check for updates on startup
     this.checkForUpdates();
     
-    // EuraSync support
-    if (this.options.sync?.enabled) {
-      this.euraSync = new EuraSync(client, this.options.sync);
+    // EuraSync support (accepts 'eurasync', 'euraSync', or 'sync' for config key)
+    const syncConfig = options.eurasync || options.euraSync || options.sync;
+    if (syncConfig?.enabled) {
+      this.euraSync = new EuraSync(client, syncConfig);
     } else {
       this.euraSync = null;
     }
@@ -404,12 +410,8 @@ class Euralink extends EventEmitter {
           const trackData = response.data?.tracks || [];
           this.tracks = new Array(trackData.length);
           
-          // Use Promise.all for parallel processing
-          const trackPromises = trackData.map((track, index) => {
-            return Promise.resolve(new Track(track, requester, requestNode));
-          });
-          
-          this.tracks = await Promise.all(trackPromises);
+          // Synchronously create Track instances for each track
+          this.tracks = trackData.map((track, index) => new Track(track, requester, requestNode));
 
           this.emit("debug", `Search Success for "${query}" on node "${requestNode.name}", loadType: ${response.loadType} tracks: ${this.tracks.length}`);
         } else {
@@ -530,6 +532,10 @@ class Euralink extends EventEmitter {
   // Load player states for autoResume
   async loadPlayersState(filePath) {
     try {
+      // Warn if resume.enabled is false
+      if (!this.options.resume?.enabled) {
+        this.emit("debug", `[Euralink] WARNING: loadPlayersState called but resume.enabled is false. Players will be restored, but their state will NOT be kept up to date for future saves. Set resume.enabled: true for full auto-resume support.`);
+      }
       const data = await fs.readFile(filePath, 'utf8');
       const playersData = JSON.parse(data);
       
@@ -546,10 +552,12 @@ class Euralink extends EventEmitter {
           
           // Create player from saved state
           const player = Player.fromJSON(this, node, playerData);
+          // Force autoResumeState.enabled to match current config
+          player.autoResumeState.enabled = !!this.options.resume?.enabled;
           this.players.set(guildId, player);
           
           // Save autoResume state if enabled
-          if (player.autoResumeState.enabled) {
+          if (this.options.resume?.enabled && player.autoResumeState.enabled) {
             player.saveAutoResumeState();
           }
           
