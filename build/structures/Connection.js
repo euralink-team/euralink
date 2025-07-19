@@ -138,23 +138,21 @@ class Connection {
     // Process batched updates
     async processUpdateQueue() {
         if (this.updateQueue.length === 0) return;
-
         const latestUpdate = this.updateQueue[this.updateQueue.length - 1];
         this.updateQueue = []; // Clear queue
-
         try {
             await this.updatePlayerVoiceData(latestUpdate);
         } catch (error) {
             this.player.eura.emit("debug", `[Connection] Failed to process update queue: ${error.message}`);
-            
             // Retry with exponential backoff
             if (this.reconnectAttempts < this.maxReconnectAttempts) {
                 this.reconnectAttempts++;
                 const delay = Math.pow(2, this.reconnectAttempts) * 1000;
-                
                 setTimeout(() => {
                     this.queueUpdate();
                 }, delay);
+            } else {
+                this.player.eura.emit("connectionError", this, error);
             }
         }
     }
@@ -164,9 +162,7 @@ class Connection {
             voice: this.voice,
             volume: this.player.volume,
         };
-
         this.player.eura.emit("debug", this.player.node.name, `[Rest Manager] Updating player with voice data: ${JSON.stringify({ voice: data.voice })}`);
-        
         try {
             await this.player.node.rest.updatePlayer({
                 guildId: this.player.guildId,
@@ -175,13 +171,33 @@ class Connection {
                     volume: data.volume,
                 }),
             });
-            
             this.lastUpdate = Date.now();
             this.reconnectAttempts = 0;
         } catch (error) {
             this.player.eura.emit("debug", `[Connection] Failed to update player: ${error.message}`);
+            this.player.eura.emit("connectionError", this, error);
             throw error;
         }
+    }
+
+    /**
+     * Clear the connection state and reset all fields.
+     */
+    clearState() {
+        if (this.updateTimeout) {
+            clearTimeout(this.updateTimeout);
+        }
+        this.updateQueue = [];
+        this.connectionState = 'disconnected';
+        this.reconnectAttempts = 0;
+        this.voice = {
+            sessionId: null,
+            event: null,
+            endpoint: null,
+            token: null,
+        };
+        this.region = null;
+        this.voiceChannel = null;
     }
 
     // Get connection health status

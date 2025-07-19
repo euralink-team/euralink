@@ -354,23 +354,96 @@ class Filters {
     }
 
     async clearFilters() {
-        Object.assign(this, new Filters(this.player))
-        
-        await this.updateFilters();
-        return this;
+        try {
+            Object.assign(this, new Filters(this.player));
+            await this.updateFilters();
+            if (this.player && this.player.eura) {
+                this.player.eura.emit("filtersCleared", this.player);
+            }
+            return this;
+        } catch (error) {
+            if (this.player && this.player.eura) {
+                this.player.eura.emit("filtersError", this.player, error);
+            }
+            throw error;
+        }
     }
 
     async updateFilters() {
-        const { equalizer, karaoke, timescale, tremolo, vibrato, rotation, distortion, channelMix, lowPass, volume } = this;
-
-        await this.player.node.rest.updatePlayer({
-            guildId: this.player.guildId,
-            data: {
-                filters: { volume, equalizer, karaoke, timescale, tremolo, vibrato, rotation, distortion, channelMix, lowPass }
+        try {
+            const { equalizer, karaoke, timescale, tremolo, vibrato, rotation, distortion, channelMix, lowPass, volume } = this;
+            await this.player.node.rest.updatePlayer({
+                guildId: this.player.guildId,
+                data: {
+                    filters: { volume, equalizer, karaoke, timescale, tremolo, vibrato, rotation, distortion, channelMix, lowPass }
+                }
+            });
+            if (this.player && this.player.eura) {
+                this.player.eura.emit("filtersUpdated", this.player);
             }
-        });
+            return this;
+        } catch (error) {
+            if (this.player && this.player.eura) {
+                this.player.eura.emit("filtersError", this.player, error);
+            }
+            throw error;
+        }
+    }
 
+    /**
+     * Apply preset filter combinations
+     */
+    async setPreset(presetName, options = {}) {
+        const presets = {
+            // Gaming presets
+            gaming: { nightcore: { enabled: true, rate: 1.2 }, bassboost: { enabled: true, value: 2 } },
+            gaming_hardcore: { nightcore: { enabled: true, rate: 1.4 }, bassboost: { enabled: true, value: 4 } },
+            
+            // Chill presets
+            chill: { lowpass: { enabled: true, smoothing: 35.0 } },
+            lofi: { lowpass: { enabled: true, smoothing: 25.0 } },
+            
+            // Party presets
+            party: { bassboost: { enabled: true, value: 3 }, '8d': { enabled: true } },
+            rave: { bassboost: { enabled: true, value: 5 } },
+            
+            // Vocal presets
+            karaoke_soft: { karaoke: { enabled: true, level: 0.5 } },
+            karaoke_strong: { karaoke: { enabled: true, level: 1.0 } },
+            
+            // Audio enhancement
+            clarity: { equalizer: [{ band: 3, gain: 0.1 }, { band: 4, gain: 0.15 }, { band: 5, gain: 0.1 }] }
+        };
+
+        const preset = presets[presetName.toLowerCase()];
+        if (!preset) {
+            throw new Error(`Preset "${presetName}" not found. Available: ${Object.keys(presets).join(', ')}`);
+        }
+
+        await this.clearFilters();
+
+        for (const [filterName, filterOptions] of Object.entries(preset)) {
+            if (filterOptions.enabled) {
+                switch (filterName) {
+                    case 'nightcore': this.setNightcore(true, filterOptions); break;
+                    case 'bassboost': this.setBassboost(true, filterOptions); break;
+                    case '8d': this.set8D(true, filterOptions); break;
+                    case 'karaoke': this.setKaraoke(true, filterOptions); break;
+                    case 'lowpass': this.setLowPass(true, filterOptions); break;
+                    case 'equalizer': this.setEqualizer(filterOptions); break;
+                }
+            }
+        }
+
+        this.player.eura.emit("debug", this.player.guildId, `Applied preset: ${presetName}`);
         return this;
+    }
+
+    /**
+     * Get all available presets
+     */
+    getAvailablePresets() {
+        return ['gaming', 'gaming_hardcore', 'chill', 'lofi', 'party', 'rave', 'karaoke_soft', 'karaoke_strong', 'clarity'];
     }
 }
 

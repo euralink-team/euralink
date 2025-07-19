@@ -5,7 +5,8 @@ const { Track } = require("./Track");
 class Node {
     /**
      * @param {import("./Euralink").Euralink} eura 
-     * @param {} node 
+     * @param {Object} node - Node config (must include restVersion)
+     * @param {Object} options - Global Euralink options
      */
     constructor(eura, node, options) {
         this.eura = eura;
@@ -13,10 +14,25 @@ class Node {
         this.host = node.host || "localhost";
         this.port = node.port || 2333;
         this.password = node.password || "youshallnotpass";
-        this.restVersion = options.restVersion;
+        this.restVersion = node.restVersion || 'v4';
         this.secure = node.secure || false;
         this.sessionId = node.sessionId || null;
-        this.rest = new Rest(eura, this);
+        // Debug log for connection fields
+        console.log('[Node.js] Connecting with:', {
+          host: this.host,
+          port: this.port,
+          password: this.password,
+          restVersion: this.restVersion,
+          secure: this.secure
+        });
+        this.rest = new Rest(eura, {
+            host: this.host,
+            port: this.port,
+            secure: this.secure,
+            password: this.password,
+            sessionId: this.sessionId,
+            restVersion: this.restVersion
+        });
 
         // Improved URL construction with HTTP2 support
         this.wsUrl = this.constructWsUrl();
@@ -176,8 +192,43 @@ class Node {
             return await this.rest.makeRequest("GET", `/${options.restVersion || this.restVersion}/info`, null, options.includeHeaders);
         } catch (error) {
             this.eura.emit('debug', this.name, `Failed to fetch node info: ${error.message}`);
+            this.eura.emit('nodeError', this, error);
             throw error; // Re-throw to be handled by caller
         }
+    }
+
+    /**
+     * Clear the node state and caches.
+     */
+    clearState() {
+        this.info = null;
+        this.stats = {
+            players: 0,
+            playingPlayers: 0,
+            uptime: 0,
+            memory: {
+                free: 0,
+                used: 0,
+                allocated: 0,
+                reservable: 0,
+            },
+            cpu: {
+                cores: 0,
+                systemLoad: 0,
+                lavalinkLoad: 0,
+            },
+            frameStats: {
+                sent: 0,
+                nulled: 0,
+                deficit: 0,
+            },
+        };
+        this.connected = false;
+        this.autoResumePlayers.clear();
+        this.lastStats = Date.now();
+        this.connectionStartTime = null;
+        this.lastPing = 0;
+        this.pingHistory = [];
     }
 
     async connect() {

@@ -3,15 +3,20 @@ const { Agent } = require("undici");
 const nodeUtil = require("node:util");
 
 class Rest {
+  /**
+   * @param {import('./Euralink').Euralink} eura
+   * @param {Object} options - Node-specific options: host, port, secure, password, sessionId, restVersion
+   */
   constructor(eura, options) {
     this.eura = eura;
-    this.url = `http${options.secure ? "s" : ""}://${options.host}:${
-      options.port
-    }`;
+    if (!options.host || !options.port || !options.password) {
+      throw new Error('[Rest.js] Missing required node options: host, port, or password');
+    }
+    this.url = `http${options.secure ? "s" : ""}://${options.host}:${options.port}`;
     console.log('[Rest.js] Creating Agent with origin:', this.url);
     this.sessionId = options.sessionId;
     this.password = options.password;
-    this.version = options.restVersion;
+    this.version = options.restVersion || 'v4';
     
     // Create persistent agent for better performance
     try {
@@ -63,21 +68,26 @@ class Rest {
 
   // Batch requests for better performance
   async batchRequest(method, endpoint, body = null, includeHeaders = false) {
-    const key = `${method}:${endpoint}:${JSON.stringify(body)}`;
-    
-    if (this.pendingRequests.has(key)) {
-      return this.pendingRequests.get(key);
+    try {
+      const key = `${method}:${endpoint}:${JSON.stringify(body)}`;
+      
+      if (this.pendingRequests.has(key)) {
+        return this.pendingRequests.get(key);
+      }
+
+      const promise = this.makeRequest(method, endpoint, body, includeHeaders);
+      this.pendingRequests.set(key, promise);
+      
+      // Clean up after request completes
+      promise.finally(() => {
+        this.pendingRequests.delete(key);
+      });
+
+      return promise;
+    } catch (error) {
+      this.eura.emit('restError', error);
+      throw error;
     }
-
-    const promise = this.makeRequest(method, endpoint, body, includeHeaders);
-    this.pendingRequests.set(key, promise);
-    
-    // Clean up after request completes
-    promise.finally(() => {
-      this.pendingRequests.delete(key);
-    });
-
-    return promise;
   }
 
   async makeRequest(method, endpoint, body = null, includeHeaders = false) {
@@ -222,6 +232,16 @@ class Rest {
 
   async getInfo() {
     return this.makeRequest("GET", `/${this.version}/info`);
+  }
+
+  /**
+   * Clear all REST caches.
+   */
+  clearAllCaches() {
+    this.cache.clear();
+    this.trackCache.clear();
+    this.nodeInfoCache.clear();
+    this.eura.emit('restCacheCleared');
   }
 }
 

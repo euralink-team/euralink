@@ -34,6 +34,7 @@ class Player extends EventEmitter {
         this.position = 0;
         this.current = null;
         this.previousTracks = [];
+        this.historyLimit = options.historyLimit || 20; // NEW: configurable history size
         this.playing = false;
         this.paused = false;
         this.connected = false;
@@ -55,6 +56,14 @@ class Player extends EventEmitter {
             lastUpdate: Date.now()
         };
 
+        // SponsorBlock support
+        this.sponsorBlock = {
+            enabled: options.sponsorBlock?.enabled ?? false,
+            categories: options.sponsorBlock?.categories ?? ['sponsor', 'selfpromo', 'interaction'],
+            segments: [],
+            chapters: []
+        };
+
         this.on("playerUpdate", (packet) => {
             this.connected = packet.state.connected;
             this.position = packet.state.position;
@@ -65,6 +74,25 @@ class Player extends EventEmitter {
 
         this.on("event", (data) => {
             this.handleEvent(data)
+        });
+
+        // SponsorBlock event handling
+        this.on("SegmentsLoaded", (data) => {
+            this.sponsorBlock.segments = data.segments || [];
+            this.eura.emit("sponsorBlockSegmentsLoaded", this, data.segments);
+        });
+
+        this.on("SegmentSkipped", (data) => {
+            this.eura.emit("sponsorBlockSegmentSkipped", this, data.segment);
+        });
+
+        this.on("ChaptersLoaded", (data) => {
+            this.sponsorBlock.chapters = data.chapters || [];
+            this.eura.emit("chaptersLoaded", this, data.chapters);
+        });
+
+        this.on("ChapterStarted", (data) => {
+            this.eura.emit("chapterStarted", this, data.chapter);
         });
     }
     /**
@@ -198,15 +226,54 @@ class Player extends EventEmitter {
      * @private
      */
     addToPreviousTrack(track) {
-      if (Number.isInteger(this.eura.options.multipleTrackHistory) && this.previousTracks.length >= this.eura.options.multipleTrackHistory) {
-        this.previousTracks.splice(this.eura.options.multipleTrackHistory, this.previousTracks.length);
-      } 
-      // If its falsy Save Only last Played Track.
-      else if(!this.eura.options.multipleTrackHistory) {
-       this.previousTracks[0] = track;
-       return;
-      }
-      this.previousTracks.unshift(track)
+        if (!track) return;
+        // Attach metadata
+        const now = Date.now();
+        let historyEntry = {
+            ...track,
+            playedAt: now,
+            replayCount: 1
+        };
+        // If this track is already the most recent, increment replayCount
+        if (this.previousTracks.length > 0 && this.previousTracks[0].info.identifier === track.info.identifier) {
+            this.previousTracks[0].replayCount += 1;
+            this.previousTracks[0].playedAt = now;
+        } else {
+            this.previousTracks.unshift(historyEntry);
+            // Enforce history size limit
+            if (this.previousTracks.length > this.historyLimit) {
+                this.previousTracks = this.previousTracks.slice(0, this.historyLimit);
+            }
+        }
+    }
+    /**
+     * @description Get the full track history (recently played)
+     * @returns {Array} Array of track history entries
+     */
+    getHistory() {
+        return this.previousTracks;
+    }
+
+    /**
+     * Get all favorite tracks from history.
+     * @returns {Array} Array of favorited tracks
+     */
+    getFavorites() {
+        return this.previousTracks.filter(track => track.favorited);
+    }
+
+    /**
+     * Get unique artists and sources from queue and history.
+     * @returns {Object} { artists: Set, sources: Set }
+     */
+    getUniqueArtistsAndSources() {
+        const artists = new Set();
+        const sources = new Set();
+        for (const track of [...this.queue, ...this.previousTracks]) {
+            if (track.info?.author) artists.add(track.info.author);
+            if (track.info?.sourceName) sources.add(track.info.sourceName);
+        }
+        return { artists, sources };
     }
 
     queueUpdate(updateData) {
@@ -262,27 +329,21 @@ class Player extends EventEmitter {
             if (!this.connected) {
                 throw new Error("Player connection is not initiated. Kindly use Euralink.createConnection() and establish a connection, TIP: Check if Guild Voice States intent is set/provided & 'updateVoiceState' is used in the raw(Gateway Raw) event");
             }
-        if (!this.queue.length) return;
-
-        this.current = this.queue.shift();
-
-        if (!this.current.track) {
-            this.current = await this.current.resolve(this.eura);
-        }
-
-        this.playing = true;
-        this.position = 0;
+            if (!this.queue.length) return;
+            this.current = this.queue.shift();
+            if (!this.current.track) {
+                this.current = await this.current.resolve(this.eura);
+            }
+            this.playing = true;
+            this.position = 0;
             this.timestamp = Date.now();
-
-        const { track } = this.current;
-
+            const { track } = this.current;
             this.queueUpdate({
                 track: {
                     encoded: track,
-            },
-        });
-
-        return this;
+                },
+            });
+            return this;
         } catch (err) {
             this.eura.emit('playerError', this, err);
             throw err;
@@ -627,6 +688,10 @@ class Player extends EventEmitter {
         if (this.eura.players.has(this.guildId)) {
             this.eura.players.delete(this.guildId);
         }
+        // Clear bot activity status if setActivityStatus is enabled
+        if (this.eura.setActivityStatus && this.eura.client.user) {
+            this.eura.client.user.setActivity(null);
+        }
         this.eura.emit("playerDestroy", this);
     }
 
@@ -698,6 +763,10 @@ class Player extends EventEmitter {
         if (!this.connected) {
             this.eura.emit("debug", this.guildId, "Player disconnected from voice, skipping next track playback");
             this.eura.emit("queueEnd", player, track, payload);
+            // Clear bot activity status if setActivityStatus is enabled
+            if (this.eura.setActivityStatus && this.eura.client.user) {
+                this.eura.client.user.setActivity(null);
+            }
             return;
         }
 
@@ -730,6 +799,11 @@ class Player extends EventEmitter {
                 });
         }
 
+        // Clear bot activity status if setActivityStatus is enabled
+        if (this.eura.setActivityStatus && this.eura.client.user) {
+            this.eura.client.user.setActivity(null);
+        }
+
         this.eura.emit("queueEnd", player, track, payload);
     }
 
@@ -744,7 +818,7 @@ class Player extends EventEmitter {
     socketClosed(player, payload) {
         this.eura.emit("socketClosed", player, payload);
         
-        if (this.autoResumeState.enabled && this.current) {
+        if (this.autoResumeState.enabled && this.eura.options.resume?.enabled && this.current) {
             setTimeout(() => {
                 this.restart();
             }, 1000);
@@ -863,6 +937,115 @@ class Player extends EventEmitter {
             return `${hours}:${String(minutes % 60).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
         }
         return `${minutes}:${String(seconds % 60).padStart(2, '0')}`;
+    }
+
+    /**
+     * Set SponsorBlock categories for automatic skipping
+     * @param {Array<string>} categories Array of category names to skip
+     * @returns {Promise<boolean>} Success status
+     */
+    async setSponsorBlockCategories(categories = ['sponsor', 'selfpromo', 'interaction']) {
+        try {
+            if (!this.node.sessionId) {
+                throw new Error('Node session not available');
+            }
+
+            await this.node.rest.makeRequest(
+                'PUT',
+                `/v4/sessions/${this.node.sessionId}/players/${this.guildId}/sponsorblock/categories`,
+                categories
+            );
+
+            this.sponsorBlock.categories = categories;
+            this.sponsorBlock.enabled = categories.length > 0;
+            
+            this.eura.emit("debug", this.guildId, `SponsorBlock categories updated: ${categories.join(', ')}`);
+            return true;
+        } catch (error) {
+            this.eura.emit("debug", this.guildId, `Failed to set SponsorBlock categories: ${error.message}`);
+            return false;
+        }
+    }
+
+    /**
+     * Get current SponsorBlock categories
+     * @returns {Promise<Array<string>|null>} Current categories or null on error
+     */
+    async getSponsorBlockCategories() {
+        try {
+            if (!this.node.sessionId) {
+                throw new Error('Node session not available');
+            }
+
+            const response = await this.node.rest.makeRequest(
+                'GET',
+                `/v4/sessions/${this.node.sessionId}/players/${this.guildId}/sponsorblock/categories`
+            );
+
+            return response || [];
+        } catch (error) {
+            this.eura.emit("debug", this.guildId, `Failed to get SponsorBlock categories: ${error.message}`);
+            return null;
+        }
+    }
+
+    /**
+     * Clear SponsorBlock categories (disable automatic skipping)
+     * @returns {Promise<boolean>} Success status
+     */
+    async clearSponsorBlockCategories() {
+        try {
+            if (!this.node.sessionId) {
+                throw new Error('Node session not available');
+            }
+
+            await this.node.rest.makeRequest(
+                'DELETE',
+                `/v4/sessions/${this.node.sessionId}/players/${this.guildId}/sponsorblock/categories`
+            );
+
+            this.sponsorBlock.categories = [];
+            this.sponsorBlock.enabled = false;
+            
+            this.eura.emit("debug", this.guildId, "SponsorBlock categories cleared");
+            return true;
+        } catch (error) {
+            this.eura.emit("debug", this.guildId, `Failed to clear SponsorBlock categories: ${error.message}`);
+            return false;
+        }
+    }
+
+    /**
+     * Get loaded SponsorBlock segments for current track
+     * @returns {Array} Array of segments
+     */
+    getSponsorBlockSegments() {
+        return this.sponsorBlock.segments;
+    }
+
+    /**
+     * Get loaded chapters for current track
+     * @returns {Array} Array of chapters
+     */
+    getChapters() {
+        return this.sponsorBlock.chapters;
+    }
+
+    /**
+     * Get current chapter based on playback position
+     * @param {number} position Current position in milliseconds
+     * @returns {Object|null} Current chapter or null
+     */
+    getCurrentChapter(position = this.position) {
+        if (!this.sponsorBlock.chapters.length) return null;
+
+        for (const chapter of this.sponsorBlock.chapters) {
+            if (position >= chapter.start && position < chapter.end) {
+                return chapter;
+            }
+        }
+
+        return null;
     }
 }
 
