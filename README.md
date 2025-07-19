@@ -743,7 +743,7 @@ Check out our enhanced example bot that demonstrates every V0.3.0 feature:
 - 🛡️ Health monitoring
 - 📊 Queue management
 
-See: [`example-enhanced.js`](example-enhanced.js)
+See: [`example-enhanced.js`](https://github.com/euralink-team/euralink/blob/main/test/example-enhanced.js)
 
 ### Running Tests
 
