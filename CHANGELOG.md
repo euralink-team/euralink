@@ -1,7 +1,7 @@
 # 🎵 Euralink V0.3.0 - The Ultimate Lavalink Client Release
 
 ## 📋 Version: 0.3.0 (Stable Release)
-**Release Date:** January 19, 2025  
+**Release Date:** July 19, 2025  
 **Previous Version:** 0.2.5-rc.2
 
 ---
